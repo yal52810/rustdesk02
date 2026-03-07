@@ -1,0 +1,10 @@
+# Ignore build artifacts
+.git
+.gitignore
+*.md
+node_modules
+dist
+
+# Ignore development files
+.vscode
+.idea
