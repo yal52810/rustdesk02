@@ -232,6 +232,12 @@ export const asyncRoutes = [
         meta: { title: 'ActivationCodeManage', icon: 'Key' /*keepAlive: true*/ },
         component: () => import('@/views/activation_code/index.vue'),
       },
+      {
+        path: '/mailConfig',
+        name: 'MailConfig',
+        meta: { title: '邮件配置', icon: 'Message' },
+        component: () => import('@/views/config/mail.vue'),
+      },
     ],
   },
 ]

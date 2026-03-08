@@ -20,3 +20,26 @@ export function admin () {
     method: 'get',
   })
 }
+
+export function mail () {
+  return request({
+    url: '/config/mail',
+    method: 'get',
+  })
+}
+
+export function updateMail (data) {
+  return request({
+    url: '/config/mail',
+    method: 'post',
+    data,
+  })
+}
+
+export function testMail (data) {
+  return request({
+    url: '/config/mail/test',
+    method: 'post',
+    data,
+  })
+}

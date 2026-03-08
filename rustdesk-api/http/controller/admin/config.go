@@ -1,16 +1,46 @@
 package admin
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/lejianwen/rustdesk-api/v2/config"
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"io"
 	"os"
 	"strings"
 )
 
 type Config struct {
+}
+
+type MailConfigPayload struct {
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	Username    string `json:"username"`
+	Password    string `json:"password,omitempty"`
+	From        string `json:"from"`
+	FromName    string `json:"from_name"`
+	UseSSL      bool   `json:"use_ssl"`
+	SkipVerify  bool   `json:"skip_verify"`
+	PasswordSet bool   `json:"password_set"`
+}
+
+type UpdateMailConfigReq struct {
+	Host       string `json:"host" binding:"required"`
+	Port       int    `json:"port" binding:"required"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	From       string `json:"from" binding:"required"`
+	FromName   string `json:"from_name"`
+	UseSSL     bool   `json:"use_ssl"`
+	SkipVerify bool   `json:"skip_verify"`
+}
+
+type TestMailConfigReq struct {
+	To string `json:"to"`
 }
 
 // ServerConfig RUSTDESK服务配置
@@ -94,4 +124,99 @@ func (co *Config) AdminConfig(c *gin.Context) {
 		"title": global.Config.Admin.Title,
 		"hello": hello,
 	})
+}
+
+func (co *Config) MailConfig(c *gin.Context) {
+	response.Success(c, &MailConfigPayload{
+		Host:        global.Config.Mail.Host,
+		Port:        global.Config.Mail.Port,
+		Username:    global.Config.Mail.Username,
+		From:        global.Config.Mail.From,
+		FromName:    global.Config.Mail.FromName,
+		UseSSL:      global.Config.Mail.UseSSL,
+		SkipVerify:  global.Config.Mail.SkipVerify,
+		PasswordSet: strings.TrimSpace(global.Config.Mail.Password) != "",
+	})
+}
+
+func (co *Config) UpdateMailConfig(c *gin.Context) {
+	req := &UpdateMailConfigReq{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+
+	newCfg := global.Config.Mail
+	newCfg.Host = strings.TrimSpace(req.Host)
+	newCfg.Port = req.Port
+	newCfg.Username = strings.TrimSpace(req.Username)
+	newCfg.From = strings.TrimSpace(req.From)
+	newCfg.FromName = strings.TrimSpace(req.FromName)
+	newCfg.UseSSL = req.UseSSL
+	newCfg.SkipVerify = req.SkipVerify
+	if strings.TrimSpace(req.Password) != "" {
+		newCfg.Password = req.Password
+	}
+
+	if err := persistMailConfig(newCfg); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+
+	global.Config.Mail = newCfg
+	if service.Config != nil {
+		service.Config.Mail = newCfg
+	}
+
+	response.Success(c, &MailConfigPayload{
+		Host:        newCfg.Host,
+		Port:        newCfg.Port,
+		Username:    newCfg.Username,
+		From:        newCfg.From,
+		FromName:    newCfg.FromName,
+		UseSSL:      newCfg.UseSSL,
+		SkipVerify:  newCfg.SkipVerify,
+		PasswordSet: strings.TrimSpace(newCfg.Password) != "",
+	})
+}
+
+func (co *Config) TestMailConfig(c *gin.Context) {
+	req := &TestMailConfigReq{}
+	if err := c.ShouldBindJSON(req); err != nil && !errors.Is(err, io.EOF) {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+
+	to := strings.TrimSpace(req.To)
+	if to == "" {
+		to = strings.TrimSpace(global.Config.Mail.From)
+	}
+	if to == "" {
+		response.Fail(c, 101, "请先填写发信邮箱或测试收件邮箱")
+		return
+	}
+
+	if err := service.AllService.MailService.Send(to, "RustDesk 邮件配置测试", "这是一封来自 RustDesk 后台的测试邮件。"); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{"message": "测试邮件已发送"})
+}
+
+func persistMailConfig(mailCfg config.Mail) error {
+	if global.Viper == nil {
+		return errors.New("config writer not initialized")
+	}
+
+	global.Viper.Set("mail.host", mailCfg.Host)
+	global.Viper.Set("mail.port", mailCfg.Port)
+	global.Viper.Set("mail.username", mailCfg.Username)
+	global.Viper.Set("mail.password", mailCfg.Password)
+	global.Viper.Set("mail.from", mailCfg.From)
+	global.Viper.Set("mail.from-name", mailCfg.FromName)
+	global.Viper.Set("mail.use-ssl", mailCfg.UseSSL)
+	global.Viper.Set("mail.skip-verify", mailCfg.SkipVerify)
+
+	return global.Viper.WriteConfig()
 }

@@ -247,6 +247,11 @@ func ConfigBind(rg *gin.RouterGroup) {
 	aR.GET("/server", rs.ServerConfig)
 	aR.GET("/app", rs.AppConfig)
 
+	aRA := aR.Group("").Use(middleware.AdminPrivilege())
+	aRA.GET("/mail", rs.MailConfig)
+	aRA.POST("/mail", rs.UpdateMailConfig)
+	aRA.POST("/mail/test", rs.TestMailConfig)
+
 }
 
 /*
@@ -362,4 +367,3 @@ func ServerBind(rg *gin.RouterGroup) {
 		aR.POST("/delete", cont.Delete)
 	}
 }
-
