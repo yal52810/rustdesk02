@@ -9,26 +9,48 @@ import (
 	"net/smtp"
 	"strings"
 	"time"
+
+	"github.com/lejianwen/rustdesk-api/v2/config"
 )
 
 type MailService struct{}
 
 func (ms *MailService) IsConfigured() bool {
 	return Config != nil &&
-		Config.Mail.Host != "" &&
+		strings.TrimSpace(Config.Mail.Host) != "" &&
 		Config.Mail.Port > 0 &&
-		Config.Mail.From != ""
+		strings.TrimSpace(Config.Mail.From) != ""
+}
+
+func normalizeMailConfig(cfg config.Mail) config.Mail {
+	cfg.Host = strings.TrimSpace(cfg.Host)
+	cfg.Host = strings.TrimPrefix(cfg.Host, "ssl://")
+	cfg.Host = strings.TrimPrefix(cfg.Host, "smtp://")
+	cfg.Username = strings.TrimSpace(cfg.Username)
+	cfg.From = strings.TrimSpace(cfg.From)
+	cfg.FromName = strings.TrimSpace(cfg.FromName)
+	if cfg.Username == "" {
+		cfg.Username = cfg.From
+	}
+	return cfg
 }
 
 func (ms *MailService) Send(to, subject, body string) error {
-	if !ms.IsConfigured() {
+	if Config == nil {
+		return errors.New("mail service not configured")
+	}
+	return ms.SendWithConfig(Config.Mail, to, subject, body)
+}
+
+func (ms *MailService) SendWithConfig(rawCfg config.Mail, to, subject, body string) error {
+	cfg := normalizeMailConfig(rawCfg)
+	if cfg.Host == "" || cfg.Port <= 0 || cfg.From == "" {
 		return errors.New("mail service not configured")
 	}
 	if strings.TrimSpace(to) == "" {
 		return errors.New("recipient email is empty")
 	}
 
-	cfg := Config.Mail
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	tlsConfig := &tls.Config{
 		ServerName:         cfg.Host,
@@ -73,7 +95,7 @@ func (ms *MailService) Send(to, subject, body string) error {
 	if err := client.Mail(fromAddress); err != nil {
 		return err
 	}
-	if err := client.Rcpt(to); err != nil {
+	if err := client.Rcpt(strings.TrimSpace(to)); err != nil {
 		return err
 	}
 
@@ -85,7 +107,7 @@ func (ms *MailService) Send(to, subject, body string) error {
 	from := mail.Address{Name: cfg.FromName, Address: fromAddress}
 	headers := []string{
 		fmt.Sprintf("From: %s", from.String()),
-		fmt.Sprintf("To: %s", to),
+		fmt.Sprintf("To: %s", strings.TrimSpace(to)),
 		fmt.Sprintf("Subject: %s", subject),
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=UTF-8",
@@ -105,8 +127,8 @@ func (ms *MailService) Send(to, subject, body string) error {
 }
 
 func (ms *MailService) SendRegisterSuccess(to, username string) error {
-	subject := "注册成功通知"
-	body := fmt.Sprintf("您好，\n\n您的账号已注册成功。\n账号：%s\n\n请妥善保管账号和密码。\n", username)
+	subject := "Registration successful"
+	body := fmt.Sprintf("Your account has been created successfully.\n\nUsername: %s\n", username)
 	return ms.Send(to, subject, body)
 }
 
@@ -114,7 +136,8 @@ func (ms *MailService) ServerReachable() error {
 	if !ms.IsConfigured() {
 		return errors.New("mail service not configured")
 	}
-	addr := fmt.Sprintf("%s:%d", Config.Mail.Host, Config.Mail.Port)
+	cfg := normalizeMailConfig(Config.Mail)
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
 		return err

@@ -40,7 +40,15 @@ type UpdateMailConfigReq struct {
 }
 
 type TestMailConfigReq struct {
-	To string `json:"to"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	From       string `json:"from"`
+	FromName   string `json:"from_name"`
+	UseSSL     bool   `json:"use_ssl"`
+	SkipVerify bool   `json:"skip_verify"`
+	To         string `json:"to"`
 }
 
 // ServerConfig RUSTDESK服务配置
@@ -187,21 +195,43 @@ func (co *Config) TestMailConfig(c *gin.Context) {
 		return
 	}
 
+	mailCfg := global.Config.Mail
+	if host := strings.TrimSpace(req.Host); host != "" {
+		mailCfg.Host = host
+	}
+	if req.Port > 0 {
+		mailCfg.Port = req.Port
+	}
+	if username := strings.TrimSpace(req.Username); username != "" {
+		mailCfg.Username = username
+	}
+	if password := strings.TrimSpace(req.Password); password != "" {
+		mailCfg.Password = password
+	}
+	if from := strings.TrimSpace(req.From); from != "" {
+		mailCfg.From = from
+	}
+	if fromName := strings.TrimSpace(req.FromName); fromName != "" {
+		mailCfg.FromName = fromName
+	}
+	mailCfg.UseSSL = req.UseSSL
+	mailCfg.SkipVerify = req.SkipVerify
+
 	to := strings.TrimSpace(req.To)
 	if to == "" {
-		to = strings.TrimSpace(global.Config.Mail.From)
+		to = strings.TrimSpace(mailCfg.From)
 	}
 	if to == "" {
-		response.Fail(c, 101, "请先填写发信邮箱或测试收件邮箱")
+		response.Fail(c, 101, "please provide a sender email or test recipient")
 		return
 	}
 
-	if err := service.AllService.MailService.Send(to, "RustDesk 邮件配置测试", "这是一封来自 RustDesk 后台的测试邮件。"); err != nil {
+	if err := service.AllService.MailService.SendWithConfig(mailCfg, to, "RustDesk mail test", "This is a test email sent from the RustDesk admin panel."); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
 	}
 
-	response.Success(c, gin.H{"message": "测试邮件已发送"})
+	response.Success(c, gin.H{"message": "Test email sent"})
 }
 
 func persistMailConfig(mailCfg config.Mail) error {

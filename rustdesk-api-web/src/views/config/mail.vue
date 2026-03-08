@@ -111,10 +111,21 @@ const handleSave = async () => {
 
 const handleTest = async () => {
   testing.value = true
-  const res = await testMail({ to: form.test_to.trim() }).catch(() => false)
+  const payload = {
+    host: form.host.trim(),
+    port: form.port,
+    username: form.username.trim(),
+    password: form.password,
+    from: form.from.trim(),
+    from_name: form.from_name.trim(),
+    use_ssl: form.use_ssl,
+    skip_verify: form.skip_verify,
+    to: form.test_to.trim(),
+  }
+  const res = await testMail(payload).catch(() => false)
   testing.value = false
   if (res) {
-    ElMessage.success(res.data?.message || '测试邮件已发送')
+    ElMessage.success(res.data?.message || 'Test email sent')
   }
 }
 
