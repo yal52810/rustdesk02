@@ -13,6 +13,27 @@ import (
 
 type Vip struct{}
 
+type serverLinePayload struct {
+	ID                uint   `json:"id"`
+	Name              string `json:"name"`
+	Region            string `json:"region"`
+	IDServer          string `json:"id_server"`
+	RelayServer       string `json:"relay_server"`
+	Key               string `json:"key"`
+	APIServer         string `json:"api_server"`
+	WSHost            string `json:"ws_host"`
+	SupportTCP        bool   `json:"support_tcp"`
+	SupportWSS        bool   `json:"support_wss"`
+	SupportsWebSocket bool   `json:"supports_websocket"`
+	SupportsWS        bool   `json:"supports_ws"`
+	AllowWebSocket    bool   `json:"allow_websocket"`
+	IsDefault         bool   `json:"is_default"`
+	IsActive          bool   `json:"is_active"`
+	Priority          int    `json:"priority"`
+	CostWeight        int    `json:"cost_weight"`
+	Description       string `json:"description"`
+}
+
 // Servers returns the list of active servers
 // @Tags VIP
 // @Summary 鑾峰彇鏈嶅姟鍣ㄥ垪琛?
@@ -27,7 +48,30 @@ func (v *Vip) Servers(c *gin.Context) {
 		response.Error(c, response.TranslateMsg(c, "SystemError")+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"list": servers})
+	list := make([]serverLinePayload, 0, len(servers))
+	for _, server := range servers {
+		list = append(list, serverLinePayload{
+			ID:                server.Id,
+			Name:              server.Name,
+			Region:            server.Region,
+			IDServer:          server.IdServer,
+			RelayServer:       server.RelayServer,
+			Key:               server.Key,
+			APIServer:         server.ApiServer,
+			WSHost:            server.WsHost,
+			SupportTCP:        server.SupportTCP,
+			SupportWSS:        server.SupportWSS,
+			SupportsWebSocket: server.SupportWSS,
+			SupportsWS:        server.SupportWSS,
+			AllowWebSocket:    server.SupportWSS,
+			IsDefault:         server.IsDefault,
+			IsActive:          server.IsActive,
+			Priority:          server.Priority,
+			CostWeight:        server.CostWeight,
+			Description:       server.Description,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"list": list})
 }
 
 type RedeemReq struct {
@@ -56,7 +100,6 @@ func (v *Vip) Redeem(c *gin.Context) {
 		return
 	}
 
-	// Calculate added days
 	ac, err := service.AllService.ActivationCodeService.ValidateAndUse(req.Code, user.Id)
 	if err != nil {
 		response.Error(c, err.Error())
@@ -65,27 +108,19 @@ func (v *Vip) Redeem(c *gin.Context) {
 
 	addedDays := ac.ValidDays
 
-	// Update user info
-	if user.ValidDays != -1 {
-		if ac.ValidDays == -1 {
-			user.ValidDays = -1
-		} else {
-			user.ValidDays += ac.ValidDays
+	updates := service.AllService.ActivationCodeService.ApplyToUser(user, ac, true)
+	if len(updates) > 0 {
+		if err := service.DB.Model(user).Updates(updates).Error; err != nil {
+			response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
+			return
 		}
 	}
-
-	if ac.DeviceLimit > user.DeviceLimit {
-		user.DeviceLimit = ac.DeviceLimit
-	}
-
-	if err := service.AllService.UserService.Update(user); err != nil {
-		response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
-		return
-	}
+	user = service.AllService.UserService.InfoById(user.Id)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"valid_days": addedDays,
+		"user":       (&apiResp.UserPayload{}).FromUser(user),
 		"message":    "Redeem success",
 	})
 }

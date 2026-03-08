@@ -1,39 +1,67 @@
 <template>
   <div>
     <el-card shadow="hover">
-      <el-row :gutter="20">
-        <el-col :span="6">
+      <el-alert
+        title="激活码说明"
+        type="info"
+        :closable="false"
+        show-icon
+      >
+        <template #default>
+          选择套餐后，激活码会自动继承套餐对应的线路权限。客户端兑换后，账号有效期、设备限制和默认线路会一起生效。
+        </template>
+      </el-alert>
+
+      <el-row :gutter="20" style="margin-top: 16px">
+        <el-col :span="8">
           <el-button type="primary" @click="showCreateDialog">创建激活码</el-button>
           <el-button type="success" @click="showBatchCreateDialog">批量创建</el-button>
         </el-col>
       </el-row>
 
       <el-table :data="list" style="width: 100%; margin-top: 20px" border>
-        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-        <el-table-column prop="code" label="激活码" width="300"></el-table-column>
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="code" label="激活码" min-width="280" />
         <el-table-column label="套餐" width="150">
-          <template #default="scope">
-            {{ scope.row.package?.name || '-' }}
+          <template #default="{ row }">
+            {{ row.package?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="valid_days" label="有效天数" width="100"></el-table-column>
-        <el-table-column prop="device_limit" label="设备限制" width="100"></el-table-column>
+        <el-table-column label="继承线路" min-width="220">
+          <template #default="{ row }">
+            <el-space wrap>
+              <el-tag
+                v-for="server in row.package?.servers || []"
+                :key="server.id"
+                :type="server.support_wss ? 'success' : 'info'"
+                size="small"
+              >
+                {{ server.name }}
+              </el-tag>
+              <span v-if="!(row.package?.servers || []).length">-</span>
+            </el-space>
+          </template>
+        </el-table-column>
+        <el-table-column prop="valid_days" label="有效天数" width="100" />
+        <el-table-column prop="device_limit" label="设备限制" width="100" />
         <el-table-column label="过期时间" width="180">
-          <template #default="scope">
-            {{ scope.row.expires_at || '永久' }}
+          <template #default="{ row }">
+            {{ row.expires_at || '永久' }}
           </template>
         </el-table-column>
         <el-table-column label="使用状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.used_by > 0 ? 'success' : 'info'">
-              {{ scope.row.used_by > 0 ? '已使用' : '未使用' }}
+          <template #default="{ row }">
+            <el-tag :type="row.used_by > 0 ? 'success' : 'info'">
+              {{ row.used_by > 0 ? '已使用' : '未使用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="备注"></el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="160" />
         <el-table-column label="操作" width="100" fixed="right">
-          <template #default="scope">
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)" :disabled="scope.row.used_by > 0">删除</el-button>
+          <template #default="{ row }">
+            <el-button type="danger" size="small" @click="handleDelete(row)" :disabled="row.used_by > 0">
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -49,8 +77,7 @@
       />
     </el-card>
 
-    <!-- 创建激活码对话框 -->
-    <el-dialog v-model="createDialogVisible" title="创建激活码" width="500px">
+    <el-dialog v-model="createDialogVisible" title="创建激活码" width="520px">
       <el-form :model="createForm" label-width="100px">
         <el-form-item label="套餐">
           <el-select v-model="createForm.package_id" clearable placeholder="选择套餐">
@@ -59,15 +86,14 @@
               :key="item.id"
               :label="item.name"
               :value="item.id"
-            ></el-option>
+            />
           </el-select>
-          <el-text class="mx-1" type="info">选择套餐后自动填充</el-text>
         </el-form-item>
         <el-form-item label="有效天数" required>
-          <el-input-number v-model="createForm.valid_days" :min="1"></el-input-number>
+          <el-input-number v-model="createForm.valid_days" :min="1" />
         </el-form-item>
         <el-form-item label="设备限制" required>
-          <el-input-number v-model="createForm.device_limit" :min="1" :max="1000"></el-input-number>
+          <el-input-number v-model="createForm.device_limit" :min="1" :max="1000" />
         </el-form-item>
         <el-form-item label="过期时间">
           <el-date-picker
@@ -78,7 +104,7 @@
           />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="createForm.remark" type="textarea"></el-input>
+          <el-input v-model="createForm.remark" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -87,8 +113,7 @@
       </template>
     </el-dialog>
 
-    <!-- 批量创建对话框 -->
-    <el-dialog v-model="batchCreateDialogVisible" title="批量创建激活码" width="500px">
+    <el-dialog v-model="batchCreateDialogVisible" title="批量创建激活码" width="520px">
       <el-form :model="batchCreateForm" label-width="100px">
         <el-form-item label="套餐">
           <el-select v-model="batchCreateForm.package_id" clearable placeholder="选择套餐">
@@ -97,18 +122,17 @@
               :key="item.id"
               :label="item.name"
               :value="item.id"
-            ></el-option>
+            />
           </el-select>
-          <el-text class="mx-1" type="info">选择套餐后自动填充</el-text>
         </el-form-item>
         <el-form-item label="数量" required>
-          <el-input-number v-model="batchCreateForm.count" :min="1" :max="1000"></el-input-number>
+          <el-input-number v-model="batchCreateForm.count" :min="1" :max="1000" />
         </el-form-item>
         <el-form-item label="有效天数" required>
-          <el-input-number v-model="batchCreateForm.valid_days" :min="1"></el-input-number>
+          <el-input-number v-model="batchCreateForm.valid_days" :min="1" />
         </el-form-item>
         <el-form-item label="设备限制" required>
-          <el-input-number v-model="batchCreateForm.device_limit" :min="1" :max="1000"></el-input-number>
+          <el-input-number v-model="batchCreateForm.device_limit" :min="1" :max="1000" />
         </el-form-item>
         <el-form-item label="过期时间">
           <el-date-picker
@@ -119,7 +143,7 @@
           />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="batchCreateForm.remark" type="textarea"></el-input>
+          <el-input v-model="batchCreateForm.remark" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -144,86 +168,69 @@ const createDialogVisible = ref(false)
 const batchCreateDialogVisible = ref(false)
 const packagesList = ref([])
 
-const createForm = ref({
+const defaultCreateForm = () => ({
   package_id: null,
   valid_days: 365,
   device_limit: 10,
   expires_at: null,
-  remark: ''
+  remark: '',
 })
 
-const batchCreateForm = ref({
+const defaultBatchCreateForm = () => ({
   package_id: null,
   count: 10,
   valid_days: 365,
   device_limit: 10,
   expires_at: null,
-  remark: ''
+  remark: '',
 })
 
+const createForm = ref(defaultCreateForm())
+const batchCreateForm = ref(defaultBatchCreateForm())
+
 const getList = async () => {
-  const res = await getActivationCodeList({ page: page.value, page_size: pageSize.value })
-  if (res.code === 0) {
+  const res = await getActivationCodeList({ page: page.value, page_size: pageSize.value }).catch(() => false)
+  if (res && res.code === 0) {
     list.value = res.data.list || []
-    total.value = res.data.total
+    total.value = res.data.total || 0
   }
 }
 
 const getPackages = async () => {
-  const res = await packages({ page_size: 9999 }).catch(_ => false)
+  const res = await packages({ page_size: 9999 }).catch(() => false)
   if (res) {
     packagesList.value = res.data?.list || []
   }
 }
 
-// 监听套餐选择变化 - 创建表单
-watch(() => createForm.value.package_id, (newVal) => {
-  if (newVal) {
-    const selectedPackage = packagesList.value.find(p => p.id === newVal)
-    if (selectedPackage) {
-      createForm.value.valid_days = selectedPackage.valid_days
-      createForm.value.device_limit = selectedPackage.device_limit
-    }
+const applyPackageDefaults = (formRef, packageId) => {
+  if (!packageId) {
+    return
   }
-})
+  const selectedPackage = packagesList.value.find((item) => item.id === packageId)
+  if (!selectedPackage) {
+    return
+  }
+  formRef.value.valid_days = selectedPackage.valid_days
+  formRef.value.device_limit = selectedPackage.device_limit
+}
 
-// 监听套餐选择变化 - 批量创建表单
-watch(() => batchCreateForm.value.package_id, (newVal) => {
-  if (newVal) {
-    const selectedPackage = packagesList.value.find(p => p.id === newVal)
-    if (selectedPackage) {
-      batchCreateForm.value.valid_days = selectedPackage.valid_days
-      batchCreateForm.value.device_limit = selectedPackage.device_limit
-    }
-  }
-})
+watch(() => createForm.value.package_id, (newVal) => applyPackageDefaults(createForm, newVal))
+watch(() => batchCreateForm.value.package_id, (newVal) => applyPackageDefaults(batchCreateForm, newVal))
 
 const showCreateDialog = () => {
-  createForm.value = {
-    package_id: null,
-    valid_days: 365,
-    device_limit: 10,
-    expires_at: null,
-    remark: ''
-  }
+  createForm.value = defaultCreateForm()
   createDialogVisible.value = true
 }
 
 const showBatchCreateDialog = () => {
-  batchCreateForm.value = {
-    package_id: null,
-    count: 10,
-    valid_days: 365,
-    device_limit: 10,
-    expires_at: null,
-    remark: ''
-  }
+  batchCreateForm.value = defaultBatchCreateForm()
   batchCreateDialogVisible.value = true
 }
 
 const handleCreate = async () => {
-  const res = await create(createForm.value)
-  if (res.code === 0) {
+  const res = await create(createForm.value).catch(() => false)
+  if (res && res.code === 0) {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
     getList()
@@ -231,8 +238,8 @@ const handleCreate = async () => {
 }
 
 const handleBatchCreate = async () => {
-  const res = await batchCreate(batchCreateForm.value)
-  if (res.code === 0) {
+  const res = await batchCreate(batchCreateForm.value).catch(() => false)
+  if (res && res.code === 0) {
     ElMessage.success('批量创建成功')
     batchCreateDialogVisible.value = false
     getList()
@@ -240,13 +247,17 @@ const handleBatchCreate = async () => {
 }
 
 const handleDelete = async (row) => {
-  await ElMessageBox.confirm('确定删除该激活码吗？', '提示', {
+  const confirmed = await ElMessageBox.confirm('确定删除这个激活码吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  })
-  const res = await remove(row.id)
-  if (res.code === 0) {
+    type: 'warning',
+  }).catch(() => false)
+  if (!confirmed) {
+    return
+  }
+
+  const res = await remove(row.id).catch(() => false)
+  if (res && res.code === 0) {
     ElMessage.success('删除成功')
     getList()
   }

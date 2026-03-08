@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"sort"
 
 	"github.com/lejianwen/rustdesk-api/v2/model"
 )
@@ -10,7 +11,6 @@ type ServerConfigService struct {
 	*BaseService
 }
 
-// ServerConfigResult 服务器配置结果
 type ServerConfigResult struct {
 	IdServer    string `json:"id_server"`
 	RelayServer string `json:"relay_server"`
@@ -19,16 +19,13 @@ type ServerConfigResult struct {
 	WsHost      string `json:"ws_host,omitempty"`
 }
 
-// GetServerConfig 获取服务器配置（兼容旧接口）
 func (s *ServerConfigService) GetServerConfig(user *model.User) (idServer, relayServer, key string) {
 	result := s.GetServerConfigSmart(user, "", false)
 	return result.IdServer, result.RelayServer, result.Key
 }
 
-// GetServerConfigSmart 智能获取服务器配置
 func (s *ServerConfigService) GetServerConfigSmart(user *model.User, clientIP string, isRestricted bool) *ServerConfigResult {
-	// 1. 检查用户是否有自定义配置
-	if user.CustomIdServer != "" {
+	if user != nil && user.CustomIdServer != "" {
 		return &ServerConfigResult{
 			IdServer:    user.CustomIdServer,
 			RelayServer: user.CustomRelayServer,
@@ -36,12 +33,14 @@ func (s *ServerConfigService) GetServerConfigSmart(user *model.User, clientIP st
 		}
 	}
 
-	// 2. 如果没有提供客户端 IP，使用默认配置
+	if assigned := s.getAssignedServerConfig(user, isRestricted); assigned != nil {
+		return assigned
+	}
+
 	if clientIP == "" {
 		return s.getDefaultConfig()
 	}
 
-	// 3. 使用智能调度
 	geoIPService := &GeoIPService{}
 	clientRegion := geoIPService.GetRegionByIP(clientIP)
 
@@ -55,28 +54,81 @@ func (s *ServerConfigService) GetServerConfigSmart(user *model.User, clientIP st
 
 	result, err := schedulerService.Schedule(scheduleReq)
 	if err != nil || result.PrimaryServer == nil {
-		// 调度失败，使用默认配置
 		return s.getDefaultConfig()
 	}
 
-	// 4. 返回调度结果
-	server := result.PrimaryServer
-	config := &ServerConfigResult{
+	config := serverToConfig(result.PrimaryServer)
+	if result.Protocol == "wss" && result.PrimaryServer.WsHost != "" {
+		config.WsHost = result.PrimaryServer.WsHost
+	}
+	return config
+}
+
+func (s *ServerConfigService) getAssignedServerConfig(user *model.User, isRestricted bool) *ServerConfigResult {
+	if user == nil {
+		return nil
+	}
+
+	candidates := make([]*model.Server, 0, 4)
+	if user.PrimaryServer != nil {
+		candidates = append(candidates, user.PrimaryServer)
+	}
+	if user.BackupServer != nil {
+		candidates = append(candidates, user.BackupServer)
+	}
+	if user.Package != nil && len(user.Package.Servers) > 0 {
+		servers := append([]*model.Server{}, user.Package.Servers...)
+		sort.SliceStable(servers, func(i, j int) bool {
+			if servers[i].Priority == servers[j].Priority {
+				return servers[i].Id < servers[j].Id
+			}
+			return servers[i].Priority > servers[j].Priority
+		})
+		candidates = append(candidates, servers...)
+	}
+
+	filtered := make([]*model.Server, 0, len(candidates))
+	seen := make(map[uint]struct{}, len(candidates))
+	for _, server := range candidates {
+		if server == nil || !server.IsActive {
+			continue
+		}
+		if _, ok := seen[server.Id]; ok {
+			continue
+		}
+		seen[server.Id] = struct{}{}
+		filtered = append(filtered, server)
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	if isRestricted {
+		for _, server := range filtered {
+			if server.SupportWSS && server.WsHost != "" {
+				config := serverToConfig(server)
+				config.WsHost = server.WsHost
+				return config
+			}
+		}
+	}
+
+	return serverToConfig(filtered[0])
+}
+
+func serverToConfig(server *model.Server) *ServerConfigResult {
+	if server == nil {
+		return nil
+	}
+	return &ServerConfigResult{
 		IdServer:    server.IdServer,
 		RelayServer: server.RelayServer,
 		Key:         server.Key,
 		ApiServer:   server.ApiServer,
+		WsHost:      server.WsHost,
 	}
-
-	// 如果推荐使用 WSS，添加 ws_host
-	if result.Protocol == "wss" && server.WsHost != "" {
-		config.WsHost = server.WsHost
-	}
-
-	return config
 }
 
-// getDefaultConfig 获取默认配置
 func (s *ServerConfigService) getDefaultConfig() *ServerConfigResult {
 	idServer := os.Getenv("RUSTDESK_ID_SERVER")
 	if idServer == "" {

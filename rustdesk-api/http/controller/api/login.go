@@ -103,6 +103,8 @@ func (l *Login) Login(c *gin.Context) {
 		IdServer:    serverConfig.IdServer,
 		RelayServer: serverConfig.RelayServer,
 		Key:         serverConfig.Key,
+		ApiServer:   serverConfig.ApiServer,
+		WsHost:      serverConfig.WsHost,
 	})
 }
 

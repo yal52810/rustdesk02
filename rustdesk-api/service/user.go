@@ -17,31 +17,37 @@ import (
 type UserService struct {
 }
 
+func (us *UserService) userQuery() *gorm.DB {
+	return DB.Preload("Package.Servers").
+		Preload("PrimaryServer").
+		Preload("BackupServer")
+}
+
 // InfoById 根据用户id取用户信息
 func (us *UserService) InfoById(id uint) *model.User {
 	u := &model.User{}
-	DB.Where("id = ?", id).First(u)
+	us.userQuery().Where("id = ?", id).First(u)
 	return u
 }
 
 // InfoByUsername 根据用户名取用户信息
 func (us *UserService) InfoByUsername(un string) *model.User {
 	u := &model.User{}
-	DB.Where("username = ?", un).First(u)
+	us.userQuery().Where("username = ?", un).First(u)
 	return u
 }
 
 // InfoByEmail 根据邮箱取用户信息
 func (us *UserService) InfoByEmail(email string) *model.User {
 	u := &model.User{}
-	DB.Where("email = ?", email).First(u)
+	us.userQuery().Where("email = ?", email).First(u)
 	return u
 }
 
 // InfoByOpenid 根据openid取用户信息
 func (us *UserService) InfoByOpenid(openid string) *model.User {
 	u := &model.User{}
-	DB.Where("openid = ?", openid).First(u)
+	us.userQuery().Where("openid = ?", openid).First(u)
 	return u
 }
 
@@ -56,7 +62,7 @@ func (us *UserService) InfoByUsernamePassword(username, password string) *model.
 		Logger.Warn("Fallback to local database")
 	}
 	u := &model.User{}
-	DB.Where("username = ?", username).First(u)
+	us.userQuery().Where("username = ?", username).First(u)
 	if u.Id == 0 {
 		return u
 	}
@@ -82,7 +88,7 @@ func (us *UserService) InfoByAccessToken(token string) (*model.User, *model.User
 	if ut.ExpiredAt < time.Now().Unix() {
 		return u, ut
 	}
-	DB.Preload("Package.Servers").Where("id = ?", ut.UserId).First(u)
+	us.userQuery().Where("id = ?", ut.UserId).First(u)
 	return u, ut
 }
 
@@ -525,26 +531,31 @@ func (us *UserService) Register(username string, email string, password string, 
 
 func (us *UserService) RegisterWithActivationCode(username string, email string, password string, status model.StatusCode, activationCode string) (*model.User, error) {
 	if activationCode != "" {
-		ac, err := AllService.ActivationCodeService.ValidateAndUse(activationCode, 0)
+		ac, err := AllService.ActivationCodeService.Validate(activationCode)
 		if err != nil {
 			return nil, err
 		}
 		u := &model.User{
-			Username:    username,
-			Email:       email,
-			Password:    password,
-			GroupId:     1,
-			Status:      status,
-			ValidDays:   ac.ValidDays,
-			DeviceLimit: ac.DeviceLimit,
+			Username: username,
+			Email:    email,
+			Password: password,
+			GroupId:  1,
+			Status:   status,
 		}
 		err = us.Create(u)
 		if err != nil {
 			return nil, err
 		}
-		ac.UsedBy = u.Id
-		DB.Save(ac)
-		return u, nil
+		updates := AllService.ActivationCodeService.ApplyToUser(u, ac, false)
+		if len(updates) > 0 {
+			if err := DB.Model(u).Updates(updates).Error; err != nil {
+				return nil, err
+			}
+		}
+		if err := AllService.ActivationCodeService.MarkUsed(ac, u.Id); err != nil {
+			return nil, err
+		}
+		return us.InfoById(u.Id), nil
 	}
 	u := us.Register(username, email, password, status)
 	if u == nil {
@@ -552,7 +563,6 @@ func (us *UserService) RegisterWithActivationCode(username string, email string,
 	}
 	return u, nil
 }
-
 
 func (us *UserService) TokenList(page uint, size uint, f func(tx *gorm.DB)) *model.UserTokenList {
 	res := &model.UserTokenList{}
