@@ -137,12 +137,6 @@ export const asyncRoutes = [
         component: () => import('@/views/user/index.vue'),
       },
       {
-        path: 'batchCreate',
-        name: 'UserBatchCreate',
-        meta: { title: 'BatchCreateUser', icon: 'Plus' },
-        component: () => import('@/views/user/batchCreate.vue'),
-      },
-      {
         path: 'add',
         name: 'UserAdd',
         meta: { title: 'UserAdd', hide: true },
@@ -207,12 +201,6 @@ export const asyncRoutes = [
         name: 'ShareRecord',
         meta: { title: 'ShareRecord', icon: 'Share' /*keepAlive: true*/ },
         component: () => import('@/views/share_record/index.vue'),
-      },
-      {
-        path: '/serverCmd',
-        name: 'ServerCmd',
-        meta: { title: 'ServerCmd', icon: 'Tools' /*keepAlive: true*/ },
-        component: () => import('@/views/rustdesk/control.vue'),
       },
       {
         path: '/package',
