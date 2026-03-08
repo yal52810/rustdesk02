@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function list(params) {
   return request({
-    url: '/admin/activation_code/list',
+    url: '/activation_code/list',
     method: 'get',
     params
   })
@@ -10,7 +10,7 @@ export function list(params) {
 
 export function create(data) {
   return request({
-    url: '/admin/activation_code/create',
+    url: '/activation_code/create',
     method: 'post',
     data
   })
@@ -18,7 +18,7 @@ export function create(data) {
 
 export function batchCreate(data) {
   return request({
-    url: '/admin/activation_code/batchCreate',
+    url: '/activation_code/batchCreate',
     method: 'post',
     data
   })
@@ -26,7 +26,7 @@ export function batchCreate(data) {
 
 export function remove(id) {
   return request({
-    url: `/admin/activation_code/delete/${id}`,
+    url: `/activation_code/delete/${id}`,
     method: 'post'
   })
 }

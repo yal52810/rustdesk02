@@ -21,9 +21,10 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/utils"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
-const DatabaseVersion = 266
+const DatabaseVersion = 267
 
 // @title 管理系统API
 // @version 1.0
@@ -267,6 +268,9 @@ func DatabaseAutoUpdate() {
 		if v.Version < uint(version) {
 			Migrate(uint(version))
 		}
+		if needsSchemaMigration(db) {
+			Migrate(uint(version))
+		}
 
 		// 245迁移
 		if v.Version < 245 {
@@ -289,6 +293,53 @@ func DatabaseAutoUpdate() {
 	}
 
 }
+
+func needsSchemaMigration(db *gorm.DB) bool {
+	requiredTables := []interface{}{
+		&model.ActivationCode{},
+		&model.Server{},
+		&model.Package{},
+		&model.PackageServer{},
+	}
+	for _, table := range requiredTables {
+		if !db.Migrator().HasTable(table) {
+			return true
+		}
+	}
+
+	requiredColumns := map[interface{}][]string{
+		&model.User{}: {
+			"package_id",
+			"primary_server_id",
+			"backup_server_id",
+		},
+		&model.Server{}: {
+			"ws_host",
+			"support_tcp",
+			"support_wss",
+			"cost_weight",
+			"is_default",
+			"is_online",
+			"last_check_at",
+		},
+		&model.ActivationCode{}: {
+			"package_id",
+			"primary_server_id",
+			"backup_server_id",
+			"add_days",
+		},
+	}
+	for modelRef, columns := range requiredColumns {
+		for _, column := range columns {
+			if !db.Migrator().HasColumn(modelRef, column) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func Migrate(version uint) {
 	global.Logger.Info("Migrating....", version)
 	err := global.DB.AutoMigrate(
