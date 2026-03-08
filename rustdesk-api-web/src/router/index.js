@@ -2,22 +2,28 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 const constantRoutes = [
   {
+    path: '/portal',
+    name: 'Portal',
+    meta: { title: '用户服务中心' },
+    component: () => import('@/views/portal/index.vue'),
+  },
+  {
     path: '/login',
     name: 'Login',
-    meta: { title: 'Login' },
-    component: () => import('@/views/login/login.vue'),
+    meta: { title: '用户服务中心' },
+    component: () => import('@/views/portal/index.vue'),
   },
   {
     path: '/register',
     name: 'Register',
-    meta: { title: 'Register' },
-    component: () => import('@/views/register/index.vue'),
+    meta: { title: '用户服务中心' },
+    component: () => import('@/views/portal/index.vue'),
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
-    meta: { title: 'ForgotPassword' },
-    component: () => import('@/views/login/forgot-password.vue'),
+    meta: { title: '用户服务中心' },
+    component: () => import('@/views/portal/index.vue'),
   },
   {
     path: '/404',

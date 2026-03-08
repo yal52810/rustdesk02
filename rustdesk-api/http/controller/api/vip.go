@@ -22,6 +22,7 @@ type serverLinePayload struct {
 	Key               string `json:"key"`
 	APIServer         string `json:"api_server"`
 	WSHost            string `json:"ws_host"`
+	TopologyGroup     string `json:"topology_group"`
 	SupportTCP        bool   `json:"support_tcp"`
 	SupportWSS        bool   `json:"support_wss"`
 	SupportsWebSocket bool   `json:"supports_websocket"`
@@ -29,8 +30,11 @@ type serverLinePayload struct {
 	AllowWebSocket    bool   `json:"allow_websocket"`
 	IsDefault         bool   `json:"is_default"`
 	IsActive          bool   `json:"is_active"`
+	IsOnline          bool   `json:"is_online"`
 	Priority          int    `json:"priority"`
 	CostWeight        int    `json:"cost_weight"`
+	Topology          string `json:"topology"`
+	StatusText        string `json:"status_text"`
 	Description       string `json:"description"`
 }
 
@@ -59,6 +63,7 @@ func (v *Vip) Servers(c *gin.Context) {
 			Key:               server.Key,
 			APIServer:         server.ApiServer,
 			WSHost:            server.WsHost,
+			TopologyGroup:     server.TopologyGroup,
 			SupportTCP:        server.SupportTCP,
 			SupportWSS:        server.SupportWSS,
 			SupportsWebSocket: server.SupportWSS,
@@ -66,12 +71,25 @@ func (v *Vip) Servers(c *gin.Context) {
 			AllowWebSocket:    server.SupportWSS,
 			IsDefault:         server.IsDefault,
 			IsActive:          server.IsActive,
+			IsOnline:          server.IsOnline,
 			Priority:          server.Priority,
 			CostWeight:        server.CostWeight,
+			Topology:          "shared-id-shared-key-multi-relay",
+			StatusText:        statusText(server),
 			Description:       server.Description,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"list": list})
+}
+
+func statusText(server *model.Server) string {
+	if !server.IsActive {
+		return "disabled"
+	}
+	if server.IsOnline {
+		return "online"
+	}
+	return "offline"
 }
 
 type RedeemReq struct {

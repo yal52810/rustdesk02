@@ -43,20 +43,21 @@ func (ct *Server) Create(c *gin.Context) {
 	}
 
 	server := &model.Server{
-		Name:        form.Name,
-		Region:      form.Region,
-		IdServer:    form.IdServer,
-		RelayServer: form.RelayServer,
-		Key:         form.Key,
-		ApiServer:   form.ApiServer,
-		WsHost:      form.WsHost,
-		SupportTCP:  form.SupportTCP,
-		SupportWSS:  form.SupportWSS,
-		CostWeight:  form.CostWeight,
-		IsDefault:   form.IsDefault,
-		IsActive:    form.IsActive,
-		Priority:    form.Priority,
-		Description: form.Description,
+		Name:          form.Name,
+		Region:        form.Region,
+		IdServer:      form.IdServer,
+		RelayServer:   form.RelayServer,
+		Key:           form.Key,
+		ApiServer:     form.ApiServer,
+		WsHost:        form.WsHost,
+		TopologyGroup: form.TopologyGroup,
+		SupportTCP:    form.SupportTCP,
+		SupportWSS:    form.SupportWSS,
+		CostWeight:    form.CostWeight,
+		IsDefault:     form.IsDefault,
+		IsActive:      form.IsActive,
+		Priority:      form.Priority,
+		Description:   form.Description,
 	}
 
 	if err := service.AllService.ServerService.Create(server); err != nil {
@@ -76,21 +77,22 @@ func (ct *Server) Update(c *gin.Context) {
 	}
 
 	server := &model.Server{
-		IdModel:     model.IdModel{Id: form.Id},
-		Name:        form.Name,
-		Region:      form.Region,
-		IdServer:    form.IdServer,
-		RelayServer: form.RelayServer,
-		Key:         form.Key,
-		ApiServer:   form.ApiServer,
-		WsHost:      form.WsHost,
-		SupportTCP:  form.SupportTCP,
-		SupportWSS:  form.SupportWSS,
-		CostWeight:  form.CostWeight,
-		IsDefault:   form.IsDefault,
-		IsActive:    form.IsActive,
-		Priority:    form.Priority,
-		Description: form.Description,
+		IdModel:       model.IdModel{Id: form.Id},
+		Name:          form.Name,
+		Region:        form.Region,
+		IdServer:      form.IdServer,
+		RelayServer:   form.RelayServer,
+		Key:           form.Key,
+		ApiServer:     form.ApiServer,
+		WsHost:        form.WsHost,
+		TopologyGroup: form.TopologyGroup,
+		SupportTCP:    form.SupportTCP,
+		SupportWSS:    form.SupportWSS,
+		CostWeight:    form.CostWeight,
+		IsDefault:     form.IsDefault,
+		IsActive:      form.IsActive,
+		Priority:      form.Priority,
+		Description:   form.Description,
 	}
 
 	if err := service.AllService.ServerService.Update(server); err != nil {

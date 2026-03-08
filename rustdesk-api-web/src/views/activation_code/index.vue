@@ -13,9 +13,10 @@
       </el-alert>
 
       <el-row :gutter="20" style="margin-top: 16px">
-        <el-col :span="8">
-          <el-button type="primary" @click="showCreateDialog">创建激活码</el-button>
+        <el-col :span="12">
+          <el-button type="primary" @click="showCreateDialog">创建</el-button>
           <el-button type="success" @click="showBatchCreateDialog">批量创建</el-button>
+          <el-button :disabled="!lastBatchCodes.length" @click="exportBatchCodes()">导出最近一批</el-button>
         </el-col>
       </el-row>
 
@@ -161,6 +162,7 @@ import { list as packages } from '@/api/package'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const list = ref([])
+const lastBatchCodes = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
@@ -228,6 +230,57 @@ const showBatchCreateDialog = () => {
   batchCreateDialogVisible.value = true
 }
 
+const formatDate = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+const csvEscape = (value) => {
+  const text = (value ?? '').toString().replace(/"/g, '""')
+  return `"${text}"`
+}
+
+const exportBatchCodes = (rows = lastBatchCodes.value) => {
+  if (!rows.length) {
+    ElMessage.warning('暂无可导出的批量激活码')
+    return
+  }
+  const header = ['code', 'package_name', 'valid_days', 'device_limit', 'expires_at', 'remark']
+  const lines = [
+    header.join(','),
+    ...rows.map((row) => [
+      csvEscape(row.code),
+      csvEscape(row.package?.name || ''),
+      csvEscape(row.valid_days),
+      csvEscape(row.device_limit),
+      csvEscape(row.expires_at ? formatDate(row.expires_at) : ''),
+      csvEscape(row.remark || ''),
+    ].join(',')),
+  ]
+  const csvContent = `\ufeff${lines.join('\n')}`
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const stamp = new Date()
+  const fileName = `activation-codes-${stamp.getFullYear()}${String(stamp.getMonth() + 1).padStart(2, '0')}${String(stamp.getDate()).padStart(2, '0')}-${String(stamp.getHours()).padStart(2, '0')}${String(stamp.getMinutes()).padStart(2, '0')}${String(stamp.getSeconds()).padStart(2, '0')}.csv`
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 const handleCreate = async () => {
   const res = await create(createForm.value).catch(() => false)
   if (res && res.code === 0) {
@@ -240,8 +293,10 @@ const handleCreate = async () => {
 const handleBatchCreate = async () => {
   const res = await batchCreate(batchCreateForm.value).catch(() => false)
   if (res && res.code === 0) {
-    ElMessage.success('批量创建成功')
+    lastBatchCodes.value = Array.isArray(res.data) ? res.data : []
+    ElMessage.success('批量创建成功，已导出 CSV')
     batchCreateDialogVisible.value = false
+    exportBatchCodes(lastBatchCodes.value)
     getList()
   }
 }

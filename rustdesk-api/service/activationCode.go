@@ -2,8 +2,8 @@ package service
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
+	"math/big"
 	"sort"
 	"time"
 
@@ -14,10 +14,21 @@ import (
 type ActivationCodeService struct {
 }
 
+const activationCodeCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+const activationCodeLength = 13
+
 func (s *ActivationCodeService) GenerateCode() string {
-	bytes := make([]byte, 16)
-	rand.Read(bytes)
-	return hex.EncodeToString(bytes)
+	code := make([]byte, activationCodeLength)
+	max := big.NewInt(int64(len(activationCodeCharset)))
+	for i := range code {
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			code[i] = activationCodeCharset[i%len(activationCodeCharset)]
+			continue
+		}
+		code[i] = activationCodeCharset[n.Int64()]
+	}
+	return string(code)
 }
 
 func (s *ActivationCodeService) Validate(code string) (*model.ActivationCode, error) {

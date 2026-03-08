@@ -2,22 +2,6 @@ package api
 
 import "github.com/lejianwen/rustdesk-api/v2/model"
 
-/*
-	pub enum UserStatus {
-	    Disabled = 0,
-	    Normal = 1,
-	    Unverified = -1,
-	}
-*/
-
-/*
-UserPayload
-String name = ”;
-String email = ”;
-String note = ”;
-UserStatus status;
-bool isAdmin = false;
-*/
 type UserPayload struct {
 	Name         string                 `json:"name"`
 	Email        string                 `json:"email"`
@@ -41,13 +25,17 @@ func (up *UserPayload) FromUser(user *model.User) *UserPayload {
 	}
 	up.DeviceLimit = user.DeviceLimit
 	up.Info = map[string]interface{}{
-		"package_id":        user.PackageId,
-		"primary_server_id": user.PrimaryServerId,
-		"backup_server_id":  user.BackupServerId,
-		"relay_server_id":   user.RelayServerId,
+		"package_id":             user.PackageId,
+		"primary_server_id":      user.PrimaryServerId,
+		"backup_server_id":       user.BackupServerId,
+		"relay_server_id":        user.RelayServerId,
+		"file_transfer_limit_mb": 100,
 	}
 	if user.Package != nil {
 		up.Info["package_name"] = user.Package.Name
+		if user.Package.FileTransferLimitMB > 0 {
+			up.Info["file_transfer_limit_mb"] = user.Package.FileTransferLimitMB
+		}
 	}
 	if user.PrimaryServer != nil {
 		up.Info["primary_server_name"] = user.PrimaryServer.Name
@@ -62,19 +50,6 @@ func (up *UserPayload) FromUser(user *model.User) *UserPayload {
 	return up
 }
 
-/*
-	class HttpType {
-	  static const kAuthReqTypeAccount = "account";
-	  static const kAuthReqTypeMobile = "mobile";
-	  static const kAuthReqTypeSMSCode = "sms_code";
-	  static const kAuthReqTypeEmailCode = "email_code";
-	  static const kAuthReqTypeTfaCode = "tfa_code";
-
-	  static const kAuthResTypeToken = "access_token";
-	  static const kAuthResTypeEmailCheck = "email_check";
-	  static const kAuthResTypeTfaCheck = "tfa_check";
-	}
-*/
 type LoginRes struct {
 	Type        string      `json:"type"`
 	AccessToken string      `json:"access_token"`

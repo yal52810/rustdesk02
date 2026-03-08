@@ -186,6 +186,11 @@ func (us *UserService) CheckUserEnable(u *model.User) bool {
 		return true
 	}
 
+	// Newly registered accounts without an active package should still be able to log in.
+	if u.ValidDays <= 0 {
+		return true
+	}
+
 	// If not activated yet, allow (first_login_at is nil)
 	if u.FirstLoginAt == nil {
 		return true
@@ -225,6 +230,24 @@ func (us *UserService) Create(u *model.User) error {
 	return res
 }
 
+func (us *UserService) applyUnprovisionedDefaults(user *model.User) {
+	if user == nil || user.Id == 0 {
+		return
+	}
+	user.ValidDays = 0
+	user.PackageId = nil
+	user.PrimaryServerId = nil
+	user.BackupServerId = nil
+	user.RelayServerId = nil
+	DB.Model(user).Updates(map[string]interface{}{
+		"valid_days":        0,
+		"package_id":        nil,
+		"primary_server_id": nil,
+		"backup_server_id":  nil,
+		"relay_server_id":   nil,
+	})
+}
+
 // BatchCreate 批量创建用户
 func (us *UserService) BatchCreate(users []*model.User) (successCount int, errors []string) {
 	tx := DB.Begin()
@@ -232,36 +255,31 @@ func (us *UserService) BatchCreate(users []*model.User) (successCount int, error
 	errors = make([]string, 0)
 
 	for _, user := range users {
-		// 检查用户名是否存在
 		if us.IsUsernameExists(user.Username) {
-			errors = append(errors, fmt.Sprintf("用户名 %s 已存在", user.Username))
+			errors = append(errors, fmt.Sprintf("username %s already exists", user.Username))
 			continue
 		}
 
-		// 格式化用户名
 		user.Username = us.formatUsername(user.Username)
 
-		// 加密密码
 		var err error
 		user.Password, err = utils.EncryptPassword(user.Password)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("用户 %s 密码加密失败: %v", user.Username, err))
+			errors = append(errors, fmt.Sprintf("failed to encrypt password for %s: %v", user.Username, err))
 			continue
 		}
 
-		// 创建用户
 		if err := tx.Create(user).Error; err != nil {
-			errors = append(errors, fmt.Sprintf("用户 %s 创建失败: %v", user.Username, err))
+			errors = append(errors, fmt.Sprintf("failed to create user %s: %v", user.Username, err))
 			continue
 		}
 		successCount++
 	}
 
-	// 只有在有成功创建的用户时才提交事务
 	if successCount > 0 {
 		if err := tx.Commit().Error; err != nil {
 			tx.Rollback()
-			errors = append(errors, fmt.Sprintf("事务提交失败: %v", err))
+			errors = append(errors, fmt.Sprintf("failed to commit transaction: %v", err))
 			return 0, errors
 		}
 	} else {
@@ -460,7 +478,8 @@ func (us *UserService) RegisterByOauth(oauthUser *model.OauthUser, op string) (e
 	ut.UserId = user.Id
 	tx.Create(ut)
 	tx.Commit()
-	return nil, user
+	us.applyUnprovisionedDefaults(user)
+	return nil, us.InfoById(user.Id)
 }
 
 // GenerateUsernameByOauth 生成用户名
@@ -526,7 +545,8 @@ func (us *UserService) Register(username string, email string, password string, 
 	if err != nil {
 		return nil
 	}
-	return u
+	us.applyUnprovisionedDefaults(u)
+	return us.InfoById(u.Id)
 }
 
 func (us *UserService) RegisterWithActivationCode(username string, email string, password string, status model.StatusCode, activationCode string) (*model.User, error) {

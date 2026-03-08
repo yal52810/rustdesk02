@@ -24,12 +24,11 @@ import (
 	"gorm.io/gorm"
 )
 
-const DatabaseVersion = 267
+const DatabaseVersion = 269
 
-// @title 管理系统API
+// @title 缁狅紕鎮婄化鑽ょ埠API
 // @version 1.0
-// @description 接口
-// @basePath /api
+// @description 閹恒儱褰?// @basePath /api
 // @securityDefinitions.apikey token
 // @in header
 // @name api-token
@@ -45,8 +44,7 @@ var rootCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		global.Logger.Info("API SERVER START")
-		// 启动健康检查
-		service.AllService.HealthCheckService.StartHealthCheck()
+		// 閸氼垰濮╅崑銉ユ倣濡偓閺?		service.AllService.HealthCheckService.StartHealthCheck()
 		global.Logger.Info("Health check service started")
 		http.ApiInit()
 	},
@@ -115,10 +113,8 @@ func main() {
 }
 
 func InitGlobal() {
-	//配置解析
 	global.Viper = config.Init(&global.Config, global.ConfigPath)
 
-	//日志
 	global.Logger = logger.New(&logger.Config{
 		Path:         global.Config.Logger.Path,
 		Level:        global.Config.Logger.Level,
@@ -219,15 +215,12 @@ func InitGlobal() {
 
 func DatabaseAutoUpdate() {
 	version := DatabaseVersion
-
 	db := global.DB
 
 	if global.Config.Gorm.Type == config.TypeMysql {
-		//检查存不存在数据库，不存在则创建
 		dbName := db.Migrator().CurrentDatabase()
 		if dbName == "" {
 			dbName = global.Config.Mysql.Dbname
-			// 移除 DSN 中的数据库名称，以便初始连接时不指定数据库
 			dsnWithoutDB := fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 				global.Config.Mysql.Username,
 				global.Config.Mysql.Password,
@@ -235,24 +228,19 @@ func DatabaseAutoUpdate() {
 				"",
 			)
 
-			//新链接
-			dbWithoutDB := orm.NewMysql(&orm.MysqlConfig{
-				Dsn: dsnWithoutDB,
-			}, global.Logger)
-			// 获取底层的 *sql.DB 对象，并确保在程序退出时关闭连接
+			dbWithoutDB := orm.NewMysql(&orm.MysqlConfig{Dsn: dsnWithoutDB}, global.Logger)
 			sqlDBWithoutDB, err := dbWithoutDB.DB()
 			if err != nil {
-				global.Logger.Errorf("获取底层 *sql.DB 对象失败: %v", err)
+				global.Logger.Errorf("failed to get sql.DB: %v", err)
 				return
 			}
 			defer func() {
 				if err := sqlDBWithoutDB.Close(); err != nil {
-					global.Logger.Errorf("关闭连接失败: %v", err)
+					global.Logger.Errorf("failed to close bootstrap DB: %v", err)
 				}
 			}()
 
-			err = dbWithoutDB.Exec("CREATE DATABASE IF NOT EXISTS " + dbName + " DEFAULT CHARSET utf8mb4").Error
-			if err != nil {
+			if err := dbWithoutDB.Exec("CREATE DATABASE IF NOT EXISTS " + dbName + " DEFAULT CHARSET utf8mb4").Error; err != nil {
 				global.Logger.Error(err)
 				return
 			}
@@ -261,39 +249,31 @@ func DatabaseAutoUpdate() {
 
 	if !db.Migrator().HasTable(&model.Version{}) {
 		Migrate(uint(version))
-	} else {
-		//查找最后一个version
-		var v model.Version
-		db.Last(&v)
-		if v.Version < uint(version) {
-			Migrate(uint(version))
-		}
-		if needsSchemaMigration(db) {
-			Migrate(uint(version))
-		}
-
-		// 245迁移
-		if v.Version < 245 {
-			//oauths 表的 oauth_type 字段设置为 op同样的值
-			db.Exec("update oauths set oauth_type = op")
-			db.Exec("update oauths set issuer = 'https://accounts.google.com' where op = 'google'")
-			db.Exec("update user_thirds set oauth_type = third_type, op = third_type")
-			//通过email迁移旧的google授权
-			uts := make([]model.UserThird, 0)
-			db.Where("oauth_type = ?", "google").Find(&uts)
-			for _, ut := range uts {
-				if ut.UserId > 0 {
-					db.Model(&model.User{}).Where("id = ?", ut.UserId).Update("email", ut.OpenId)
-				}
-			}
-		}
-		if v.Version < 246 {
-			db.Exec("update oauths set issuer = 'https://accounts.google.com' where op = 'google' and issuer is null")
-		}
+		return
 	}
 
-}
+	var v model.Version
+	db.Last(&v)
+	if v.Version < uint(version) || needsSchemaMigration(db) {
+		Migrate(uint(version))
+	}
 
+	if v.Version < 245 {
+		db.Exec("update oauths set oauth_type = op")
+		db.Exec("update oauths set issuer = 'https://accounts.google.com' where op = 'google'")
+		db.Exec("update user_thirds set oauth_type = third_type, op = third_type")
+		uts := make([]model.UserThird, 0)
+		db.Where("oauth_type = ?", "google").Find(&uts)
+		for _, ut := range uts {
+			if ut.UserId > 0 {
+				db.Model(&model.User{}).Where("id = ?", ut.UserId).Update("email", ut.OpenId)
+			}
+		}
+	}
+	if v.Version < 246 {
+		db.Exec("update oauths set issuer = 'https://accounts.google.com' where op = 'google' and issuer is null")
+	}
+}
 func needsSchemaMigration(db *gorm.DB) bool {
 	requiredTables := []interface{}{
 		&model.ActivationCode{},
@@ -315,12 +295,16 @@ func needsSchemaMigration(db *gorm.DB) bool {
 		},
 		&model.Server{}: {
 			"ws_host",
+			"topology_group",
 			"support_tcp",
 			"support_wss",
 			"cost_weight",
 			"is_default",
 			"is_online",
 			"last_check_at",
+		},
+		&model.Package{}: {
+			"file_transfer_limit_mb",
 		},
 		&model.ActivationCode{}: {
 			"package_id",
@@ -370,7 +354,6 @@ func Migrate(version uint) {
 		global.Logger.Error("migrate err :=>", err)
 	}
 	global.DB.Create(&model.Version{Version: version})
-	//如果是初次则创建一个默认用户
 	var vc int64
 	global.DB.Model(&model.Version{}).Count(&vc)
 	if vc == 1 {
@@ -392,7 +375,7 @@ func Migrate(version uint) {
 			Type: model.GroupTypeShare,
 		}
 		service.AllService.GroupService.Create(groupShare)
-		//是true
+		//閺勭椂rue
 		is_admin := true
 		admin := &model.User{
 			Username: "admin",
@@ -402,7 +385,6 @@ func Migrate(version uint) {
 			GroupId:  1,
 		}
 
-		// 生成随机密码
 		pwd := utils.RandomString(8)
 		global.Logger.Info("Admin Password Is: ", pwd)
 		var err error

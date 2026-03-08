@@ -9,10 +9,8 @@ import (
 	"strconv"
 )
 
-type Package struct {
-}
+type Package struct{}
 
-// List 套餐列表
 func (ct *Package) List(c *gin.Context) {
 	query := &admin.PageQuery{}
 	if err := c.ShouldBindQuery(query); err != nil {
@@ -23,7 +21,6 @@ func (ct *Package) List(c *gin.Context) {
 	response.Success(c, res)
 }
 
-// Detail 套餐详情
 func (ct *Package) Detail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	pkg, err := service.AllService.PackageService.GetById(uint(id))
@@ -34,7 +31,6 @@ func (ct *Package) Detail(c *gin.Context) {
 	response.Success(c, pkg)
 }
 
-// Create 创建套餐
 func (ct *Package) Create(c *gin.Context) {
 	form := &admin.PackageForm{}
 	if err := c.ShouldBindJSON(form); err != nil {
@@ -43,13 +39,14 @@ func (ct *Package) Create(c *gin.Context) {
 	}
 
 	pkg := &model.Package{
-		Name:        form.Name,
-		ValidDays:   form.ValidDays,
-		DeviceLimit: form.DeviceLimit,
-		Description: form.Description,
-		Price:       form.Price,
-		IsActive:    form.IsActive,
-		Priority:    form.Priority,
+		Name:                form.Name,
+		ValidDays:           form.ValidDays,
+		DeviceLimit:         form.DeviceLimit,
+		FileTransferLimitMB: form.FileTransferLimitMB,
+		Description:         form.Description,
+		Price:               form.Price,
+		IsActive:            form.IsActive,
+		Priority:            form.Priority,
 	}
 
 	if err := service.AllService.PackageService.Create(pkg, form.ServerIds); err != nil {
@@ -60,7 +57,6 @@ func (ct *Package) Create(c *gin.Context) {
 	response.Success(c, pkg)
 }
 
-// Update 更新套餐
 func (ct *Package) Update(c *gin.Context) {
 	form := &admin.PackageForm{}
 	if err := c.ShouldBindJSON(form); err != nil {
@@ -69,14 +65,15 @@ func (ct *Package) Update(c *gin.Context) {
 	}
 
 	pkg := &model.Package{
-		IdModel:     model.IdModel{Id: form.Id},
-		Name:        form.Name,
-		ValidDays:   form.ValidDays,
-		DeviceLimit: form.DeviceLimit,
-		Description: form.Description,
-		Price:       form.Price,
-		IsActive:    form.IsActive,
-		Priority:    form.Priority,
+		IdModel:             model.IdModel{Id: form.Id},
+		Name:                form.Name,
+		ValidDays:           form.ValidDays,
+		DeviceLimit:         form.DeviceLimit,
+		FileTransferLimitMB: form.FileTransferLimitMB,
+		Description:         form.Description,
+		Price:               form.Price,
+		IsActive:            form.IsActive,
+		Priority:            form.Priority,
 	}
 
 	if err := service.AllService.PackageService.Update(pkg, form.ServerIds); err != nil {
@@ -87,7 +84,6 @@ func (ct *Package) Update(c *gin.Context) {
 	response.Success(c, pkg)
 }
 
-// Delete 删除套餐
 func (ct *Package) Delete(c *gin.Context) {
 	form := &admin.PackageForm{}
 	if err := c.ShouldBindJSON(form); err != nil {

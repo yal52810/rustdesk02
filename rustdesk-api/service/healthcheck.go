@@ -2,15 +2,22 @@ package service
 
 import (
 	"net"
+	"net/url"
+	"strings"
 	"time"
+
+	"github.com/lejianwen/rustdesk-api/v2/model"
 )
 
 type HealthCheckService struct{}
 
-// CheckServerHealth 检查服务器健康状态
-func (s *HealthCheckService) CheckServerHealth(host string, port string) bool {
-	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+func (s *HealthCheckService) CheckTCPAddress(address string, defaultPort string) bool {
+	host, port := parseServerAddress(address, defaultPort)
+	if host == "" {
+		return false
+	}
+
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 5*time.Second)
 	if err != nil {
 		return false
 	}
@@ -18,8 +25,9 @@ func (s *HealthCheckService) CheckServerHealth(host string, port string) bool {
 	return true
 }
 
-// StartHealthCheck 启动健康检查定时任务
 func (s *HealthCheckService) StartHealthCheck() {
+	go s.CheckAllServers()
+
 	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range ticker.C {
@@ -28,52 +36,71 @@ func (s *HealthCheckService) StartHealthCheck() {
 	}()
 }
 
-// CheckAllServers 检查所有服务器
 func (s *HealthCheckService) CheckAllServers() {
 	servers, err := AllService.ServerService.GetActiveServers()
 	if err != nil {
-		Logger.Error("Failed to get active servers:", err)
+		Logger.Error("failed to get active servers: ", err)
 		return
 	}
 
 	for _, server := range servers {
-		// 从 id_server 或 relay_server 提取主机和端口
-		host, port := parseServerAddress(server.IdServer)
-		if host == "" {
-			host, port = parseServerAddress(server.RelayServer)
-		}
-
-		if host == "" {
+		isOnline := s.CheckServerLine(server)
+		if server.IsOnline == isOnline {
 			continue
 		}
-
-		isOnline := s.CheckServerHealth(host, port)
-		if server.IsOnline != isOnline {
-			err := AllService.ServerService.UpdateOnlineStatus(server.Id, isOnline)
-			if err != nil {
-				Logger.Error("Failed to update server status:", err)
-			} else {
-				if isOnline {
-					Logger.Infof("Server %s is now online", server.Name)
-				} else {
-					Logger.Warnf("Server %s is now offline", server.Name)
-				}
-			}
+		if err := AllService.ServerService.UpdateOnlineStatus(server.Id, isOnline); err != nil {
+			Logger.Error("failed to update server online status: ", err)
+			continue
+		}
+		if isOnline {
+			Logger.Infof("server %s is now online", server.Name)
+		} else {
+			Logger.Warnf("server %s is now offline", server.Name)
 		}
 	}
 }
 
-// parseServerAddress 解析服务器地址，提取主机和端口
-func parseServerAddress(address string) (string, string) {
+func (s *HealthCheckService) CheckServerLine(server *model.Server) bool {
+	idOK := s.CheckTCPAddress(server.IdServer, "21116")
+	relayOK := s.CheckTCPAddress(server.RelayServer, "21117")
+
+	if server.SupportWSS && server.WsHost != "" {
+		wssOK := s.CheckTCPAddress(server.WsHost, "443")
+		return idOK && (relayOK || wssOK)
+	}
+
+	return idOK && relayOK
+}
+
+func parseServerAddress(address string, defaultPort string) (string, string) {
+	address = strings.TrimSpace(address)
 	if address == "" {
 		return "", ""
 	}
 
-	// 简单解析，假设格式为 host:port 或 host
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		// 如果没有端口，使用默认端口
-		return address, "21116"
+	if strings.Contains(address, "://") {
+		u, err := url.Parse(address)
+		if err == nil {
+			host := u.Hostname()
+			port := u.Port()
+			if port == "" {
+				switch strings.ToLower(u.Scheme) {
+				case "https", "wss":
+					port = "443"
+				case "http", "ws":
+					port = "80"
+				default:
+					port = defaultPort
+				}
+			}
+			return host, port
+		}
 	}
-	return host, port
+
+	host, port, err := net.SplitHostPort(address)
+	if err == nil {
+		return host, port
+	}
+
+	return address, defaultPort
 }

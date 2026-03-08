@@ -10,7 +10,7 @@ import { T } from '@/utils/i18n'
 
 NProgress.configure({ showSpinner: false }) // NProgress Configuration
 
-const whiteList = ['/login', '/register']
+const whiteList = ['/portal', '/login', '/register', '/forgot-password']
 const routeStore = useRouteStore(pinia)
 const appStore = useAppStore(pinia)
 appStore.getAdminConfig()
@@ -25,7 +25,7 @@ router.beforeEach(async (to, from, next) => {
     if (whiteList.indexOf(to.path) !== -1) {
       next()
     } else {
-      next(`/login?redirect=${to.path}`)
+      next(`/portal?redirect=${to.path}`)
     }
 
   } else {
@@ -37,7 +37,7 @@ router.beforeEach(async (to, from, next) => {
       const info = await userStore.info()
       if (!info) {
         userStore.logout()
-        next(`/login?redirect=${to.path}`)
+        next(`/portal?redirect=${to.path}`)
       } else {
         next({ ...to, replace: true })
       }

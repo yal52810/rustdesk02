@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <el-card class="list-query" shadow="hover">
       <el-alert
@@ -8,7 +8,7 @@
         show-icon
       >
         <template #default>
-          套餐建议只保留普通版和专业版两种。公司/校园网络属于线路能力，不建议单独再建成第三种套餐。
+          套餐建议只保留普通版和专业版。公司/校园网络属于线路能力，不建议单独作为第三种套餐。
         </template>
       </el-alert>
       <el-form inline label-width="80px" style="margin-top: 16px">
@@ -25,9 +25,14 @@
         <el-table-column prop="name" :label="T('Name')" align="center" min-width="140" />
         <el-table-column prop="valid_days" label="有效天数" align="center" width="100" />
         <el-table-column prop="device_limit" label="设备限制" align="center" width="100" />
+        <el-table-column prop="file_transfer_limit_mb" label="传输上限" align="center" width="110">
+          <template #default="{ row }">
+            {{ row.file_transfer_limit_mb || 100 }} MB
+          </template>
+        </el-table-column>
         <el-table-column prop="price" label="价格" align="center" width="100">
           <template #default="{ row }">
-            ¥{{ row.price }}
+            ￥{{ row.price }}
           </template>
         </el-table-column>
         <el-table-column label="可用线路" min-width="220">
@@ -83,6 +88,9 @@
         </el-form-item>
         <el-form-item label="设备限制" prop="device_limit" required>
           <el-input-number v-model="formData.device_limit" :min="1" :max="1000" />
+        </el-form-item>
+        <el-form-item label="传输上限(MB)" prop="file_transfer_limit_mb" required>
+          <el-input-number v-model="formData.file_transfer_limit_mb" :min="1" :max="102400" />
         </el-form-item>
         <el-form-item label="价格" prop="price">
           <el-input-number v-model="formData.price" :min="0" :precision="2" />
@@ -140,6 +148,7 @@ const defaultFormData = () => ({
   name: '',
   valid_days: 30,
   device_limit: 10,
+  file_transfer_limit_mb: 100,
   price: 0,
   priority: 0,
   is_active: true,
@@ -216,6 +225,7 @@ const toEdit = (row) => {
     name: row.name,
     valid_days: row.valid_days,
     device_limit: row.device_limit,
+    file_transfer_limit_mb: row.file_transfer_limit_mb || 100,
     price: row.price,
     priority: row.priority,
     is_active: row.is_active,
