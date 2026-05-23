@@ -43,6 +43,7 @@ postgresql:
   time-zone: "Asia/Shanghai" # Time zone for PostgreSQL connection
 
 rustdesk:
+<<<<<<< HEAD
   # === 替换 frptest.f11.yoga 为你的域名 ===
   # ID 服务器 (hbbs TCP端口 21116, 不加端口默认21116)
   id-server: "frptest.f11.yoga"
@@ -50,12 +51,21 @@ rustdesk:
   relay-server: "frptest.f11.yoga"
   # ⚠️ 关键: API 地址必须用 https:// 前缀，客户端才会启用 WSS
   api-server: "https://frptest.f11.yoga"
+=======
+  id-server: "192.168.1.66:21116"
+  relay-server: "192.168.1.66:21117"
+  api-server: "http://127.0.0.1:21114"
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
   key: ""
   key-file: "/data/id_ed25519.pub"
   personal: 1
   webclient-magic-queryonline: 0
+<<<<<<< HEAD
   # WebSocket 地址 (客户端通过 wss://domain/ws/id 和 /ws/relay 连接)
   ws-host: "wss://frptest.f11.yoga"
+=======
+  ws-host: ""  #eg: wss://192.168.1.3:4443
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
 logger:
   path: "./runtime/log.txt"
   level: "info" #trace,debug,info,warn,error,fatal

@@ -39,6 +39,7 @@ logs/
 *.tmp
 *.temp
 
+<<<<<<< HEAD
 # SSL 证书和密钥 (绝对不能提交!)
 certs/
 
@@ -46,5 +47,7 @@ certs/
 web_data/
 id_data/
 
+=======
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
 # Local caches
 .gocache/

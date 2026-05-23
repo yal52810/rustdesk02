@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ============================================
 # RustDesk 完整部署 - HTTPS + WebSocket
 # 域名: frptest.f11.yoga
@@ -9,7 +10,7 @@ services:
   # ID 服务器 (hbbs) - 端口 21116/21118
   # ========================================
   hbbs:
-    image: yal52810/rustdesk-supervise-id:latest
+    image: ghcr.io/yal52810/rustdesk-supervise-id:latest
     container_name: rustdesk-hbbs
     restart: always
     command: hbbs -k ${ID_KEY:-_} -r frptest.f11.yoga:21117
@@ -25,13 +26,26 @@ services:
   # Web 管理后台 (API + Vue前端) - 端口 21114
   # ========================================
   web:
-    image: yal52810/rustdesk-supervise-web:latest
+    image: ghcr.io/yal52810/rustdesk-supervise-web:latest
+=======
+version: '3.8'
+
+# 使用 GitHub Container Registry 预构建镜像
+# 镜像地址: ghcr.io/yal52810/rustdesk-supervise-web:latest
+#          ghcr.io/yal52810/rustdesk-supervise-relay:latest
+
+services:
+  # Web 管理后台 (使用 GHCR 镜像)
+  web:
+    image: ghcr.io/yal52810/rustdesk-supervise-web:latest
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
     container_name: rustdesk-web
     restart: always
     environment:
       - RUSTDESK_API_GIN_RESOURCES_PATH=/app/resources
       - TZ=Asia/Shanghai
       - GIN_MODE=release
+<<<<<<< HEAD
       # 域名配置
       - RUSTDESK_ID_SERVER=frptest.f11.yoga
       - RUSTDESK_RELAY_SERVER=frptest.f11.yoga
@@ -39,44 +53,103 @@ services:
       - RUSTDESK_API_SERVER=https://frptest.f11.yoga
       - RUSTDESK_WS_HOST=wss://frptest.f11.yoga
       - RUSTDESK_KEY=${ID_KEY:-}
+=======
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
     volumes:
       - web_data:/app/data
       - web_logs:/app/runtime/logs
       - ./rustdesk-api/conf:/app/conf:ro
     networks:
       - rustdesk-network
+<<<<<<< HEAD
     depends_on:
       - hbbs
+=======
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:21114/api/health"]
       interval: 30s
       timeout: 3s
       retries: 3
 
+<<<<<<< HEAD
   # ========================================
   # 中继服务器 (hbbr) - 端口 21117/21119
   # ========================================
   relay:
-    image: yal52810/rustdesk-supervise-relay:latest
+    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
     container_name: rustdesk-relay
+=======
+  # 中继服务器 1 (使用 GHCR 镜像)
+  relay1:
+    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
+    container_name: rustdesk-relay1
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
     restart: always
     environment:
       - TZ=Asia/Shanghai
       - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
     networks:
       - rustdesk-network
+<<<<<<< HEAD
 
   # ========================================
   # Nginx 反向代理 (HTTPS/WSS 终端)
   # ========================================
+=======
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "21117"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # 中继服务器 2 (使用 GHCR 镜像)
+  relay2:
+    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
+    container_name: rustdesk-relay2
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
+    networks:
+      - rustdesk-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "21117"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # 中继服务器 3 (使用 GHCR 镜像)
+  relay3:
+    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
+    container_name: rustdesk-relay3
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
+    networks:
+      - rustdesk-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "21117"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Nginx 负载均衡器
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
   nginx:
     image: nginx:alpine
     container_name: rustdesk-nginx
     restart: always
     ports:
+<<<<<<< HEAD
       - "80:80"
       - "443:443"
       - "21117:21117"
+=======
+      - "21117:21117"
+      - "443:443"
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
     volumes:
       - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/letsencrypt:ro
@@ -84,16 +157,30 @@ services:
     networks:
       - rustdesk-network
     depends_on:
+<<<<<<< HEAD
       - web
       - hbbs
       - relay
+=======
+      - relay1
+      - relay2
+      - relay3
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
 
 networks:
   rustdesk-network:
     driver: bridge
 
 volumes:
+<<<<<<< HEAD
   id_data:
+=======
+>>>>>>> 1d47727a6c18d17f7edf6160fa55be4ea937751e
   web_data:
   web_logs:
   nginx_logs:
