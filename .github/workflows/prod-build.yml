@@ -7,6 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ============================================================
@@ -21,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -33,11 +36,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Web image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.optimized
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-web:latest
           cache-from: type=gha
@@ -52,6 +55,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -66,11 +71,6 @@ jobs:
       - name: Build hbbs + hbbr
         working-directory: rustdesk-server
         run: cargo build --release --bin hbbs --bin hbbr
-
-      - name: Verify binaries
-        run: |
-          ls -lh rustdesk-server/target/release/hbbs rustdesk-server/target/release/hbbr
-          file rustdesk-server/target/release/hbbs rustdesk-server/target/release/hbbr
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4
@@ -93,6 +93,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Download binaries
         uses: actions/download-artifact@v4
@@ -114,11 +116,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push ID image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./rustdesk-server
           file: ./Dockerfile.id
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-id:latest
 
@@ -135,6 +137,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Download binaries
         uses: actions/download-artifact@v4
@@ -156,10 +160,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Relay image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./rustdesk-server
           file: ./Dockerfile.relay
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-relay:latest
