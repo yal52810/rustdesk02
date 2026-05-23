@@ -1,0 +1,44 @@
+# ============================================
+# 多阶段构建: RustDesk Server (hbbs + hbbr)
+# 全 Alpine 镜像 (Debian 源在此服务器不可达)
+# ============================================
+
+# --- 阶段1: Rust 编译 (Alpine) ---
+FROM rust:1.78-alpine3.18 AS builder
+
+RUN apk add --no-cache \
+    build-base \
+    musl-dev \
+    openssl-dev \
+    openssl-libs-static \
+    git \
+    perl
+
+WORKDIR /src
+
+COPY rustdesk-server/Cargo.toml rustdesk-server/Cargo.lock rustdesk-server/build.rs ./
+COPY rustdesk-server/libs ./libs
+COPY rustdesk-server/src ./src
+
+# sparse 协议加速, musl 静态链接
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+RUN cargo build --release -p hbbs
+
+# --- 阶段2: 最小运行时 (Alpine) ---
+FROM alpine:3.18
+
+RUN apk add --no-cache ca-certificates tzdata
+
+RUN adduser -D -u 1000 rustdesk && mkdir -p /data && chown -R rustdesk:rustdesk /data
+
+COPY --from=builder /src/target/release/hbbs /usr/local/bin/hbbs
+COPY --from=builder /src/target/release/hbbr /usr/local/bin/hbbr
+RUN chmod +x /usr/local/bin/hbbs /usr/local/bin/hbbr
+
+WORKDIR /data
+ENV TZ=Asia/Shanghai
+
+EXPOSE 21116 21117 21118 21119
+VOLUME ["/data"]
+USER rustdesk

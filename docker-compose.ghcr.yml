@@ -1,0 +1,99 @@
+# ============================================
+# RustDesk 完整部署 - HTTPS + WebSocket
+# 域名: frptest.f11.yoga
+# 镜像由 GitHub Actions 自动构建并推送到 Docker Hub
+# ============================================
+
+services:
+  # ========================================
+  # ID 服务器 (hbbs) - 端口 21116/21118
+  # ========================================
+  hbbs:
+    image: yal52810/rustdesk-supervise-id:latest
+    container_name: rustdesk-hbbs
+    restart: always
+    command: hbbs -k ${ID_KEY:-_} -r frptest.f11.yoga:21117
+    environment:
+      - TZ=Asia/Shanghai
+      - RELAY_HOST=frptest.f11.yoga
+    volumes:
+      - id_data:/data
+    networks:
+      - rustdesk-network
+
+  # ========================================
+  # Web 管理后台 (API + Vue前端) - 端口 21114
+  # ========================================
+  web:
+    image: yal52810/rustdesk-supervise-web:latest
+    container_name: rustdesk-web
+    restart: always
+    environment:
+      - RUSTDESK_API_GIN_RESOURCES_PATH=/app/resources
+      - TZ=Asia/Shanghai
+      - GIN_MODE=release
+      # 域名配置
+      - RUSTDESK_ID_SERVER=frptest.f11.yoga
+      - RUSTDESK_RELAY_SERVER=frptest.f11.yoga
+      # ⚠️ 必须 https:// 前缀, 否则客户端不启用 WSS
+      - RUSTDESK_API_SERVER=https://frptest.f11.yoga
+      - RUSTDESK_WS_HOST=wss://frptest.f11.yoga
+      - RUSTDESK_KEY=${ID_KEY:-}
+    volumes:
+      - web_data:/app/data
+      - web_logs:/app/runtime/logs
+      - ./rustdesk-api/conf:/app/conf:ro
+    networks:
+      - rustdesk-network
+    depends_on:
+      - hbbs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:21114/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # ========================================
+  # 中继服务器 (hbbr) - 端口 21117/21119
+  # ========================================
+  relay:
+    image: yal52810/rustdesk-supervise-relay:latest
+    container_name: rustdesk-relay
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
+    networks:
+      - rustdesk-network
+
+  # ========================================
+  # Nginx 反向代理 (HTTPS/WSS 终端)
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: rustdesk-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "21117:21117"
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/letsencrypt:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - rustdesk-network
+    depends_on:
+      - web
+      - hbbs
+      - relay
+
+networks:
+  rustdesk-network:
+    driver: bridge
+
+volumes:
+  id_data:
+  web_data:
+  web_logs:
+  nginx_logs:

@@ -1,0 +1,94 @@
+# ============================================
+# 多阶段构建 Dockerfile for RustDesk API
+# 目标平台: Linux x86_64
+# ============================================
+
+# --- 阶段 1: 构建前端 (Vue.js) ---
+FROM node:18-alpine AS webbuilder
+
+WORKDIR /src/web
+
+# 复制依赖文件并安装（利用 Docker 缓存层）
+COPY rustdesk-api-web/package*.json ./
+RUN npm install --registry=https://registry.npmmirror.com
+
+# 复制源代码并构建
+COPY rustdesk-api-web/ ./
+RUN npm run build
+
+# --- 阶段 2: 构建后端 (Go) ---
+FROM golang:1.24-alpine AS gobuilder
+
+WORKDIR /src/api
+
+# 安装构建依赖（SQLite 需要 CGO）
+RUN apk update && apk add --no-cache \
+    git \
+    build-base \
+    ca-certificates \
+    upx
+
+# 复制 go.mod 和 go.sum 并下载依赖（利用缓存层）
+COPY rustdesk-api/go.mod rustdesk-api/go.sum ./
+RUN go mod download
+
+# 复制源代码
+COPY rustdesk-api/ ./
+
+# 复制前端构建产物到后端静态资源目录
+COPY --from=webbuilder /src/web/dist ./resources/admin
+
+# 编译 Go 程序（启用 CGO 以支持 SQLite）
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    go build -trimpath \
+    -ldflags="-s -w -X main.Version=$(git describe --tags --always 2>/dev/null || echo 'dev')" \
+    -o /usr/local/bin/apimain ./cmd
+
+# 使用 UPX 压缩二进制文件（可选，减小镜像体积）
+RUN upx --best --lzma /usr/local/bin/apimain || true
+
+# --- 阶段 3: 最小运行镜像 ---
+FROM alpine:3.18
+
+# 安装运行时依赖（包含 mysql-client 用于自动迁移）
+RUN apk add --no-cache \
+    ca-certificates \
+    bash \
+    tzdata \
+    wget \
+    mysql-client \
+    && rm -rf /var/cache/apk/*
+
+# 创建非 root 用户和必要目录
+RUN adduser -D -u 1000 appuser && \
+    mkdir -p /app/runtime/logs /app/data /app/resources /app/logs && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app
+
+# 复制编译产物和启动脚本
+COPY --from=gobuilder /usr/local/bin/apimain /usr/local/bin/apimain
+COPY --from=gobuilder /src/api/conf /app/conf
+COPY --from=gobuilder /src/api/resources /app/resources
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# 设置脚本权限
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /app
+
+# 环境变量
+ENV RUSTDESK_API_GIN_RESOURCES_PATH=/app/resources \
+    TZ=Asia/Shanghai \
+    GIN_MODE=release
+
+# 暴露端口
+EXPOSE 21114
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:21114/api/health || exit 1
+
+# 使用 entrypoint 脚本（以 root 运行以执行数据库迁移）
+USER root
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

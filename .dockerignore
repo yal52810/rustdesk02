@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+LICENSE
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Build artifacts
+rustdesk-api/apimain
+rustdesk-api/rustdesk-api
+rustdesk-server/target
+rustdesk-server/hbbs
+rustdesk-server/hbbr
+
+# Runtime files
+rustdesk-api/runtime/
+rustdesk-api/data/
+
+# Node modules (will be installed in Docker)
+rustdesk-api-web/node_modules/
+rustdesk-api-web/dist/
+
+# Docker
+docker-compose.yml
+Dockerfile*
+.dockerignore
+
+# Scripts (except entrypoint.sh)
+build-*.sh
+deploy*.sh
+fix-*.sh
+push-*.sh
+complete-*.sh
+init-*.sh
+!entrypoint.sh
+!docker-entrypoint.sh
+
+# Logs
+*.log

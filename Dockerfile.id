@@ -1,0 +1,32 @@
+# ============================================
+# Dockerfile for RustDesk ID Server (hbbs)
+# ============================================
+# 由 GitHub Actions 构建: cargo build --release --bin hbbs
+# 编译产物: rustdesk-server/target/release/hbbs
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 rustdesk && \
+    mkdir -p /data && \
+    chown -R rustdesk:rustdesk /data
+
+# GitHub Actions 编译的二进制 (context: ./rustdesk-server)
+COPY target/release/hbbs /usr/local/bin/hbbs
+RUN chmod +x /usr/local/bin/hbbs
+
+WORKDIR /data
+
+ENV TZ=Asia/Shanghai
+
+EXPOSE 21116 21118
+
+VOLUME ["/data"]
+
+USER rustdesk
+
+CMD ["sh", "-c", "/usr/local/bin/hbbs -k ${ID_KEY:-_} -r ${RELAY_HOST:-relay}:21117"]

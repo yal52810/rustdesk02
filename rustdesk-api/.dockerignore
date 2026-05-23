@@ -1,0 +1,11 @@
+# Ignore build artifacts
+.git
+.gitignore
+*.md
+
+# Ignore test files  
+*_test.go
+
+# Ignore development files
+.vscode
+.idea

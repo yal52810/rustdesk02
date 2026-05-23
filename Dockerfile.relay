@@ -1,0 +1,40 @@
+# ============================================
+# Dockerfile for RustDesk Relay Server (hbbr)
+# ============================================
+# This Dockerfile expects the binary to be pre-built
+# and available at target/release/hbbr
+
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 rustdesk && \
+    mkdir -p /data && \
+    chown -R rustdesk:rustdesk /data
+
+# Copy pre-built binary
+COPY target/release/hbbr /usr/local/bin/hbbr
+RUN chmod +x /usr/local/bin/hbbr
+
+WORKDIR /data
+
+# Environment
+ENV TZ=Asia/Shanghai
+ENV RELAY_KEY=egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=
+
+# Expose ports
+EXPOSE 21117 21119
+
+# Volume for data
+VOLUME ["/data"]
+
+# Switch to non-root user
+USER rustdesk
+
+# Use exec form with sh -c to support environment variable expansion
+CMD ["sh", "-c", "/usr/local/bin/hbbr -k ${RELAY_KEY}"]
