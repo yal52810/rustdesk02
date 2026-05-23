@@ -25,7 +25,7 @@ WORKDIR /data
 
 # Environment
 ENV TZ=Asia/Shanghai
-ENV RELAY_KEY=egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=
+ENV RELAY_KEY=
 
 # Expose ports
 EXPOSE 21117 21119
