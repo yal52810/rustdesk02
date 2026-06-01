@@ -78,6 +78,8 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
+    volumes:
+      - id_data:/data
     networks:
       - rustdesk-network
 
