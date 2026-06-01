@@ -82,6 +82,9 @@ services:
       - id_data:/data
     networks:
       - rustdesk-network
+    depends_on:
+      hbbs:
+        condition: service_started
 
   # ========================================
   # Nginx 反向代理 (HTTPS/WSS 终端)
