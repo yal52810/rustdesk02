@@ -11,7 +11,11 @@
 # ============================================
 set -euo pipefail
 
-DOMAIN="${DOMAIN:?请设置 DOMAIN 环境变量，例如: export DOMAIN=your-domain.com}"
+DOMAIN="${DOMAIN:?请设置 DOMAIN 环境变量，例如: export DOMAIN=api.your-domain.com}"
+ROOT_DOMAIN=$(echo "$DOMAIN" | awk -F. '{
+    if (NF>2) print $(NF-1)"."$NF;
+    else print $0
+}')
 CERT_DIR="${CERT_DIR:-./certs}"
 ACME_IMAGE="neilpang/acme.sh:latest"
 CF_TOKEN="${CF_Token:-}"
@@ -37,7 +41,7 @@ if [ -z "$CF_ACCOUNT" ] || [ "$CF_ACCOUNT" = "your-cloudflare-account-id-here" ]
 fi
 
 echo "============================================"
-echo "🔐 签发证书: ${DOMAIN} + *.${DOMAIN}"
+echo "🔐 签发证书: ${DOMAIN} + *.${ROOT_DOMAIN}"
 echo "   验证方式: Cloudflare DNS-01 challenge"
 echo "============================================"
 
@@ -61,7 +65,7 @@ docker run --rm \
     --dns dns_cf \
     --dnssleep 30 \
     -d "${DOMAIN}" \
-    -d "*.${DOMAIN}" \
+    -d "*.${ROOT_DOMAIN}" \
     --keylength ec-256 \
     --server letsencrypt
 
