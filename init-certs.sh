@@ -81,6 +81,8 @@ echo "✅ 证书申请成功"
 echo ""
 echo "→ [2/4] 安装证书到共享目录..."
 
+mkdir -p "${CERT_DIR}/live/${ROOT_DOMAIN}"
+
 docker run --rm \
     -v "$(pwd)/acme_data:/acme.sh" \
     -v "$(pwd)/certs:/etc/letsencrypt" \
