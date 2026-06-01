@@ -21,7 +21,10 @@
           <div class="status-value">{{ userInfo.username || userStore.username }}</div>
           <div class="status-meta">{{ packageLabel }}</div>
           <div class="status-meta" v-if="userInfo.expired_at">到期：{{ userInfo.expired_at }}</div>
-          <el-button text class="logout-btn" @click="logout">退出登录</el-button>
+          <div class="hero-actions">
+            <el-button v-if="isAdmin" type="primary" size="small" @click="goAdmin">管理后台</el-button>
+            <el-button text class="logout-btn" @click="logout">退出登录</el-button>
+          </div>
         </div>
       </section>
 
@@ -383,6 +386,7 @@ const filteredAuthTabs = computed(() => {
   return allowRegister.value ? authTabs : authTabs.filter(tab => tab.key !== 'register')
 })
 const isLoggedIn = computed(() => !!userStore.token)
+const isAdmin = computed(() => userStore.route_names.includes('*') || userStore.route_names.includes('UserList'))
 const packageLabel = computed(() => {
   return userInfo.value?.package?.name || userInfo.value?.info?.package_name || '未开通'
 })
@@ -472,6 +476,7 @@ const submitLogin = async () => {
   if (!res) return
   ElMessage.success('登录成功')
   await loadUserInfo()
+  if (isAdmin.value) { router.replace('/user/index'); return }
   router.replace(route.query.redirect || '/portal')
 }
 
@@ -585,6 +590,7 @@ const copyText = async (value) => {
   ElMessage.success('已复制')
 }
 
+const goAdmin = () => { router.replace('/user/index') }
 const logout = () => {
   userStore.logout()
   userInfo.value = null
@@ -655,6 +661,7 @@ onBeforeUnmount(() => { if (codeTimer) { clearInterval(codeTimer); codeTimer = n
 .status-value { font-size: 24px; margin-top: 8px; color: #193b88; font-weight: 700; }
 .status-meta { margin-top: 6px; color: #376df3; }
 .logout-btn { margin-top: 12px; }
+.hero-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 8px; }
 
 // Grid
 .portal-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; }
