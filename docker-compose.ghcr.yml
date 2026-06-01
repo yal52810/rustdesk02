@@ -1,7 +1,12 @@
 # ============================================
 # RustDesk 完整部署 - HTTPS + WebSocket
-# 域名: frptest.f11.yoga
+# 域名: ${DOMAIN:-frptest.f11.yoga}
 # 镜像由 GitHub Actions 自动构建并推送到 GHCR
+# ============================================
+# 环境变量在 .env 文件中配置:
+#   DOMAIN    - 部署域名 (必填)
+#   ID_KEY    - RustDesk Key (可选)
+#   RELAY_KEY - 中继密钥 (可选)
 # ============================================
 
 services:
@@ -12,10 +17,10 @@ services:
     image: ghcr.io/yal52810/rustdesk-supervise-id:latest
     container_name: rustdesk-hbbs
     restart: always
-    command: hbbs -k ${ID_KEY:-_} -r frptest.f11.yoga:21117
+    command: hbbs -k ${ID_KEY:-_} -r ${DOMAIN:-frptest.f11.yoga}:21117
     environment:
       - TZ=Asia/Shanghai
-      - RELAY_HOST=frptest.f11.yoga
+      - RELAY_HOST=${DOMAIN:-frptest.f11.yoga}
       - REDIS_URL=redis://redis:6379/
     volumes:
       - id_data:/data
@@ -35,12 +40,12 @@ services:
       - RUSTDESK_API_GIN_RESOURCES_PATH=/app/resources
       - TZ=Asia/Shanghai
       - GIN_MODE=release
-      # 域名配置
-      - RUSTDESK_ID_SERVER=frptest.f11.yoga
-      - RUSTDESK_RELAY_SERVER=frptest.f11.yoga
+      # 域名配置 (通过 .env DOMAIN 变量统一管理)
+      - RUSTDESK_ID_SERVER=${DOMAIN:-frptest.f11.yoga}
+      - RUSTDESK_RELAY_SERVER=${DOMAIN:-frptest.f11.yoga}
       # ⚠️ 必须 https:// 前缀, 否则客户端不启用 WSS
-      - RUSTDESK_API_SERVER=https://frptest.f11.yoga
-      - RUSTDESK_WS_HOST=wss://frptest.f11.yoga
+      - RUSTDESK_API_SERVER=https://${DOMAIN:-frptest.f11.yoga}
+      - RUSTDESK_WS_HOST=wss://${DOMAIN:-frptest.f11.yoga}
       - RUSTDESK_FORCE_WSS=false
       - RUSTDESK_KEY=${ID_KEY:-}
     volumes:
@@ -72,6 +77,7 @@ services:
 
   # ========================================
   # Nginx 反向代理 (HTTPS/WSS 终端)
+  # 启动时自动替换 __DOMAIN__ → 实际域名
   # ========================================
   nginx:
     image: nginx:alpine
@@ -81,8 +87,16 @@ services:
       - "80:80"
       - "443:443"
       - "21117:21117"
+    environment:
+      - DOMAIN=${DOMAIN:-frptest.f11.yoga}
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "sed \"s/__DOMAIN__/$$DOMAIN/g\" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'",
+      ]
     volumes:
-      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-lb.conf.template:/etc/nginx/nginx.conf.template:ro
       - ./certs:/etc/letsencrypt
       - nginx_logs:/var/log/nginx
     networks:
@@ -96,7 +110,7 @@ services:
   # acme.sh 自动证书签发 + 续期 (Cloudflare DNS)
   # ========================================
   # 首次使用:
-  #   1. cp cf.env.example cf.env && 填入 CF Token
+  #   1. cp cf.env.example cf.env && 填入 CF Token + DOMAIN
   #   2. source cf.env && bash init-certs.sh
   #   3. 取消下方注释并 docker compose up -d
   # ========================================

@@ -11,7 +11,7 @@
 # ============================================
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-frptest.f11.yoga}"
+DOMAIN="${DOMAIN:?请设置 DOMAIN 环境变量，例如: export DOMAIN=your-domain.com}"
 CERT_DIR="${CERT_DIR:-./certs}"
 ACME_IMAGE="neilpang/acme.sh:latest"
 CF_TOKEN="${CF_Token:-}"
