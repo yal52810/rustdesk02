@@ -17,9 +17,10 @@ RUN useradd -m -u 999 rustdesk && \
     mkdir -p /data && \
     chown -R rustdesk:rustdesk /data
 
-# Copy pre-built binary
+# Copy pre-built binary and entrypoint
 COPY target/release/hbbr /usr/local/bin/hbbr
-RUN chmod +x /usr/local/bin/hbbr
+COPY entrypoint-relay.sh /usr/local/bin/entrypoint-relay.sh
+RUN chmod +x /usr/local/bin/hbbr /usr/local/bin/entrypoint-relay.sh
 
 WORKDIR /data
 
@@ -36,5 +37,4 @@ VOLUME ["/data"]
 # Switch to non-root user
 USER rustdesk
 
-# Use exec form with sh -c to support environment variable expansion
-CMD ["sh", "-c", "/usr/local/bin/hbbr -k ${RELAY_KEY}"]
+ENTRYPOINT ["/usr/local/bin/entrypoint-relay.sh"]
