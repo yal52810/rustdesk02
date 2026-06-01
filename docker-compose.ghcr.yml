@@ -112,26 +112,23 @@ services:
       - relay
 
   # ========================================
-  # acme.sh 自动证书签发 + 续期 (Cloudflare DNS)
+  # acme.sh 自动证书续期 (Cloudflare DNS)
+  # 首次: source cf.env && bash init-certs.sh 签发证书
+  # 之后 acme 容器会每 60 天自动续期
   # ========================================
-  # 首次使用:
-  #   1. cp cf.env.example cf.env && 填入 CF Token + DOMAIN
-  #   2. source cf.env && bash init-certs.sh
-  #   3. 取消下方注释并 docker compose up -d
-  # ========================================
-  # acme:
-  #   image: neilpang/acme.sh:latest
-  #   container_name: rustdesk-acme
-  #   restart: always
-  #   environment:
-  #     CF_Token: ${CF_Token}
-  #     CF_Account_ID: ${CF_Account_ID}
-  #   volumes:
-  #     - acme_data:/acme.sh
-  #     - ./certs:/etc/letsencrypt
-  #   command: daemon --reloadcmd "touch /etc/letsencrypt/.renewed"
-  #   networks:
-  #     - rustdesk-network
+  acme:
+    image: neilpang/acme.sh:latest
+    container_name: rustdesk-acme
+    restart: always
+    environment:
+      - CF_Token=${CF_Token:-}
+      - CF_Account_ID=${CF_Account_ID:-}
+    volumes:
+      - acme_data:/acme.sh
+      - ./certs:/etc/letsencrypt
+    command: daemon --reloadcmd "touch /etc/letsencrypt/.renewed"
+    networks:
+      - rustdesk-network
 
   # ========================================
   # Redis - 服务器拓扑共享 + 会话缓存
