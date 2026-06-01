@@ -8,6 +8,9 @@
 #
 # 用法:
 #   source cf.env && ./init-certs.sh
+#
+# DOMAIN=api.seset.xyz (nginx 使用的子域名)
+# 实际签发: seset.xyz + *.seset.xyz → 软链到 api.seset.xyz
 # ============================================
 set -euo pipefail
 
@@ -29,7 +32,7 @@ if [ -z "$CF_TOKEN" ] || [ "$CF_TOKEN" = "your-cloudflare-api-token-here" ]; the
     echo ""
     echo "   1. 访问 https://dash.cloudflare.com/profile/api-tokens"
     echo "   2. 创建 API Token → Edit zone DNS 模板"
-    echo "   3. Zone Resources: Include → Specific zone → ${DOMAIN}"
+    echo "   3. Zone Resources: Include → Specific zone → ${ROOT_DOMAIN}"
     echo "   4. 将 Token 和 Account ID 填入 cf.env"
     echo "   5. 执行: source cf.env && ./init-certs.sh"
     exit 1
@@ -41,20 +44,21 @@ if [ -z "$CF_ACCOUNT" ] || [ "$CF_ACCOUNT" = "your-cloudflare-account-id-here" ]
 fi
 
 echo "============================================"
-echo "🔐 签发证书: ${DOMAIN} + *.${ROOT_DOMAIN}"
+echo "🔐 签发证书: ${ROOT_DOMAIN} + *.${ROOT_DOMAIN}"
+echo "   nginx 通过 ${DOMAIN} → ${ROOT_DOMAIN} 软链读取"
 echo "   验证方式: Cloudflare DNS-01 challenge"
 echo "============================================"
 
 # ============================================
 # 创建证书输出目录
 # ============================================
-mkdir -p "${CERT_DIR}/live/${DOMAIN}"
+mkdir -p "${CERT_DIR}/live"
 
 # ============================================
 # Step 1: 申请证书 (DNS-01)
 # ============================================
 echo ""
-echo "→ [1/3] 申请 Let's Encrypt 证书..."
+echo "→ [1/4] 申请 Let's Encrypt 证书..."
 
 docker run --rm \
     -e CF_Token="${CF_TOKEN}" \
@@ -64,7 +68,7 @@ docker run --rm \
     --issue \
     --dns dns_cf \
     --dnssleep 30 \
-    -d "${DOMAIN}" \
+    -d "${ROOT_DOMAIN}" \
     -d "*.${ROOT_DOMAIN}" \
     --keylength ec-256 \
     --server letsencrypt
@@ -72,29 +76,43 @@ docker run --rm \
 echo "✅ 证书申请成功"
 
 # ============================================
-# Step 2: 安装证书到 nginx 共享目录
+# Step 2: 安装证书到共享目录
 # ============================================
 echo ""
-echo "→ [2/3] 安装证书到共享目录..."
+echo "→ [2/4] 安装证书到共享目录..."
 
 docker run --rm \
     -v "$(pwd)/acme_data:/acme.sh" \
     -v "$(pwd)/certs:/etc/letsencrypt" \
     "${ACME_IMAGE}" \
     --install-cert \
-    -d "${DOMAIN}" \
+    -d "${ROOT_DOMAIN}" \
     --ecc \
-    --key-file "/etc/letsencrypt/live/${DOMAIN}/privkey.pem" \
-    --fullchain-file "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" \
+    --key-file "/etc/letsencrypt/live/${ROOT_DOMAIN}/privkey.pem" \
+    --fullchain-file "/etc/letsencrypt/live/${ROOT_DOMAIN}/fullchain.pem" \
     --reloadcmd "echo 'cert renewed at \$(date)' >> /etc/letsencrypt/renewal.log"
 
-echo "✅ 证书已安装到 ${CERT_DIR}/live/${DOMAIN}/"
+echo "✅ 证书已安装到 ${CERT_DIR}/live/${ROOT_DOMAIN}/"
 
 # ============================================
-# Step 3: 验证证书
+# Step 3: 创建软链 (DOMAIN → ROOT_DOMAIN)
+# nginx 使用 live/${DOMAIN}/ 路径
 # ============================================
 echo ""
-echo "→ [3/3] 验证证书..."
+echo "→ [3/4] 创建软链 ${CERT_DIR}/live/${DOMAIN} → ${ROOT_DOMAIN}..."
+
+if [ "${DOMAIN}" != "${ROOT_DOMAIN}" ]; then
+    ln -sfn "${ROOT_DOMAIN}" "${CERT_DIR}/live/${DOMAIN}"
+    echo "✅ 软链已创建"
+else
+    echo "   DOMAIN == ROOT_DOMAIN，无需软链"
+fi
+
+# ============================================
+# Step 4: 验证证书
+# ============================================
+echo ""
+echo "→ [4/4] 验证证书..."
 
 CERT_FILE="${CERT_DIR}/live/${DOMAIN}/fullchain.pem"
 KEY_FILE="${CERT_DIR}/live/${DOMAIN}/privkey.pem"
@@ -102,11 +120,15 @@ KEY_FILE="${CERT_DIR}/live/${DOMAIN}/privkey.pem"
 if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
     EXPIRY=$(openssl x509 -enddate -noout -in "$CERT_FILE" 2>/dev/null | cut -d= -f2)
     SUBJECT=$(openssl x509 -subject -noout -in "$CERT_FILE" 2>/dev/null | cut -d= -f2-)
+    SAN=$(openssl x509 -ext subjectAltName -noout -in "$CERT_FILE" 2>/dev/null | tr ',' '\n' | sed 's/^/   /')
     echo ""
     echo "📜 证书信息:"
-    echo "   域名: ${SUBJECT}"
+    echo "   主域名: ${SUBJECT}"
+    echo "   覆盖域:"
+    echo "${SAN}"
     echo "   到期: ${EXPIRY}"
     echo "   路径: ${CERT_DIR}/live/${DOMAIN}/"
+    echo "   实际: ${CERT_DIR}/live/${ROOT_DOMAIN}/"
 fi
 
 echo ""
@@ -114,7 +136,6 @@ echo "============================================"
 echo "✅ 证书签发完成!"
 echo ""
 echo "下一步:"
-echo "1. 在 docker-compose.ghcr.yml 中取消 acme 服务的注释"
-echo "2. docker compose up -d acme    (启动自动续期守护进程)"
-echo "3. docker compose restart nginx (加载新证书)"
+echo "  docker compose up -d acme    (启动自动续期守护进程)"
+echo "  docker compose restart nginx (加载新证书)"
 echo "============================================"
