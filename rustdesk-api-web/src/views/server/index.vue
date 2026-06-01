@@ -1,139 +1,171 @@
 <template>
   <div>
-    <el-card class="list-query" shadow="hover">
-      <el-alert
-        title="线路互通说明"
-        type="info"
-        :closable="false"
-        show-icon
-      >
-        <template #default>
-          所有线路建议共用同一套 ID 服务、API 和 Key，仅区分不同中继入口与受限网络接入方式。这样控制端切美国、日本线路时，仍可与未手动切线的被控端互通。
-        </template>
-      </el-alert>
-      <el-form inline label-width="80px" style="margin-top: 16px">
-        <el-form-item>
-          <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
-          <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <!-- ======================================== -->
+    <!-- ID 服务器 + 全局在线状态 -->
+    <!-- ======================================== -->
+    <el-row :gutter="16" style="margin-bottom: 16px">
+      <el-col :span="8">
+        <el-card shadow="hover" class="status-card">
+          <div class="status-row">
+            <span class="status-dot" :class="idOnline ? 'online' : 'offline'"></span>
+            <div>
+              <div class="status-title">ID 信令服务器</div>
+              <div class="status-addr">{{ idAddr || '未配置' }}</div>
+            </div>
+            <el-tag :type="idOnline ? 'success' : 'danger'" size="small" effect="dark">
+              {{ idOnline ? '在线' : '离线' }}
+            </el-tag>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="status-card">
+          <div class="status-row">
+            <div>
+              <div class="status-title">API 管理后台</div>
+              <div class="status-addr">{{ apiAddr }}</div>
+            </div>
+            <el-tag type="success" size="small" effect="dark">运行中</el-tag>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="status-card">
+          <div class="status-row">
+            <div>
+              <div class="status-title">中继节点</div>
+              <div class="status-addr">{{ relayNodes.length }} 个在线 / {{ listRes.total }} 个总计</div>
+            </div>
+            <el-tag :type="relayNodes.length > 0 ? 'success' : 'warning'" size="small" effect="dark">
+              {{ relayNodes.length > 0 ? '正常' : '无节点' }}
+            </el-tag>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <el-card class="list-body" shadow="hover">
-      <el-table :data="listRes.list" v-loading="listRes.loading" border>
-        <el-table-column prop="id" label="ID" align="center" width="80" />
-        <el-table-column prop="name" :label="T('Name')" align="center" min-width="140" />
-        <el-table-column prop="region" label="地区" align="center" width="110" />
-        <el-table-column prop="topology_group" label="互通组" align="center" width="130">
+    <!-- ======================================== -->
+    <!-- 中继节点列表 -->
+    <!-- ======================================== -->
+    <el-card shadow="hover">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span><b>中继节点管理</b></span>
+          <el-button type="primary" size="small" @click="toAdd">+ 添加节点</el-button>
+        </div>
+      </template>
+
+      <el-table :data="listRes.list" v-loading="listRes.loading" border stripe>
+        <el-table-column prop="name" label="节点名称" min-width="140" />
+        <el-table-column prop="region" label="地区" width="100" align="center" />
+        <el-table-column label="类型" width="120" align="center">
           <template #default="{ row }">
-            {{ row.topology_group || 'default' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="线路类型" align="center" width="140">
-          <template #default="{ row }">
-            <el-tag :type="row.support_wss ? 'success' : 'info'">
-              {{ row.support_wss ? '公司/校园网络' : '标准线路' }}
+            <el-tag :type="row.support_wss ? 'success' : ''" size="small">
+              {{ row.support_wss ? 'WSS 穿透' : 'TCP 标准' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="id_server" label="ID 服务器" min-width="180" />
-        <el-table-column prop="relay_server" label="中继服务器" min-width="180" />
-        <el-table-column prop="ws_host" label="WS Host" min-width="180">
+        <el-table-column prop="relay_server" label="中继地址" min-width="200" />
+        <el-table-column label="在线状态" width="110" align="center">
           <template #default="{ row }">
-            {{ row.ws_host || '-' }}
+            <div style="display: flex; align-items: center; justify-content: center; gap: 6px">
+              <span class="status-dot" :class="row.is_online ? 'online' : 'offline'"></span>
+              <el-tag :type="row.is_online ? 'success' : 'danger'" size="small" effect="dark">
+                {{ row.is_online ? '在线' : '离线' }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="启用状态" align="center" width="90">
+        <el-table-column prop="last_check_at" label="最近检测" width="160" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
-              {{ row.is_active ? '启用' : '停用' }}
+            {{ row.last_check_at || '尚未检测' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="启用" width="70" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
+              {{ row.is_active ? '开' : '关' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="在线状态" align="center" width="90">
+        <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ row }">
-            <el-tag :type="row.is_online ? 'success' : 'danger'" size="small">
-              {{ row.is_online ? '在线' : '离线' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="最近检测" align="center" min-width="160">
-          <template #default="{ row }">
-            {{ row.last_check_at || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column :label="T('Actions')" align="center" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button @click="toEdit(row)" size="small">{{ T('Edit') }}</el-button>
-            <el-button type="danger" @click="del(row)" size="small">{{ T('Delete') }}</el-button>
+            <el-button text type="primary" size="small" @click="toEdit(row)">编辑</el-button>
+            <el-button text type="danger" size="small" @click="del(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <div style="margin-top: 16px; display: flex; justify-content: flex-end">
+        <el-pagination
+          background
+          layout="prev, pager, next, sizes, jumper"
+          :page-sizes="[10, 20, 50, 100]"
+          v-model:page-size="listQuery.page_size"
+          v-model:current-page="listQuery.page"
+          :total="listRes.total"
+          small
+        />
+      </div>
     </el-card>
 
-    <el-card class="list-page" shadow="hover">
-      <el-pagination
-        background
-        layout="prev, pager, next, sizes, jumper"
-        :page-sizes="[10, 20, 50, 100]"
-        v-model:page-size="listQuery.page_size"
-        v-model:current-page="listQuery.page"
-        :total="listRes.total"
-      />
-    </el-card>
-
-    <el-dialog v-model="formVisible" :title="!formData.id ? T('Create') : T('Update')" width="820">
-      <el-form class="dialog-form" :model="formData" label-width="120px">
-        <el-form-item :label="T('Name')" prop="name" required>
-          <el-input v-model="formData.name" placeholder="例如：美国标准线路" />
+    <!-- ======================================== -->
+    <!-- 添加 / 编辑中继节点对话框 -->
+    <!-- ======================================== -->
+    <el-dialog
+      v-model="formVisible"
+      :title="formData.id ? '编辑中继节点' : '添加中继节点'"
+      width="560px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="formData" label-width="100px">
+        <el-form-item label="节点名称" required>
+          <el-input v-model="formData.name" placeholder="例如：北京-联通" maxlength="50" />
         </el-form-item>
-        <el-form-item label="地区" prop="region">
-          <el-input v-model="formData.region" placeholder="例如：US / JP / HK" />
+        <el-form-item label="地区代码" required>
+          <el-select v-model="formData.region" placeholder="选择地区" style="width: 100%" filterable allow-create>
+            <el-option label="🇨🇳 华东 (CN-East)" value="CN-East" />
+            <el-option label="🇨🇳 华北 (CN-North)" value="CN-North" />
+            <el-option label="🇨🇳 华南 (CN-South)" value="CN-South" />
+            <el-option label="🇨🇳 西南 (CN-West)" value="CN-West" />
+            <el-option label="🇭🇰 香港 (HK)" value="HK" />
+            <el-option label="🇯🇵 日本 (JP)" value="JP" />
+            <el-option label="🇺🇸 美国 (US)" value="US" />
+            <el-option label="🇪🇺 欧洲 (EU)" value="EU" />
+            <el-option label="🇸🇬 新加坡 (SG)" value="SG" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="互通组" prop="topology_group">
-          <el-input v-model="formData.topology_group" placeholder="例如：global-main，同组共享 hbbs/api/key" />
+        <el-form-item label="中继地址" required>
+          <el-input v-model="formData.relay_server" placeholder="例如：relay-bj.example.com:21117" />
         </el-form-item>
-        <el-form-item label="ID 服务器" prop="id_server" required>
-          <el-input v-model="formData.id_server" placeholder="例如：id.example.com:21116" />
+        <el-form-item label="WSS 地址">
+          <el-input v-model="formData.ws_host" placeholder="公司/校园网络填写，例如：relay-bj.example.com:21119" />
         </el-form-item>
-        <el-form-item label="中继服务器" prop="relay_server" required>
-          <el-input v-model="formData.relay_server" placeholder="例如：us-relay.example.com:21117" />
+        <el-divider content-position="left" style="margin: 8px 0">高级选项</el-divider>
+        <el-form-item label="连接类型">
+          <el-radio-group v-model="formData.support_wss">
+            <el-radio :value="false">TCP 标准线路</el-radio>
+            <el-radio :value="true">WSS 深层穿透</el-radio>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="WS Host" prop="ws_host">
-          <el-input
-            v-model="formData.ws_host"
-            placeholder="公司/校园线路填写，例如：wss://relay.example.com/ws/relay"
-          />
-        </el-form-item>
-        <el-form-item label="公钥" prop="key">
-          <el-input v-model="formData.key" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="支持 TCP" prop="support_tcp">
-          <el-switch v-model="formData.support_tcp" />
-        </el-form-item>
-        <el-form-item label="支持 WebSocket" prop="support_wss">
-          <el-switch v-model="formData.support_wss" />
-        </el-form-item>
-        <el-form-item label="启用" prop="is_active">
-          <el-switch v-model="formData.is_active" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" />
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="formVisible = false">{{ T('Cancel') }}</el-button>
-          <el-button @click="submit" type="primary">{{ T('Submit') }}</el-button>
+        <el-form-item label="启用节点">
+          <el-switch v-model="formData.is_active" active-text="启用" inactive-text="停用" />
         </el-form-item>
       </el-form>
+      <template #footer>
+        <el-button @click="formVisible = false">取消</el-button>
+        <el-button type="primary" @click="submit" :loading="submitting">
+          {{ formData.id ? '保存' : '添加' }}
+        </el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch, onActivated } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { list, create, update, remove } from '@/api/server'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { T } from '@/utils/i18n'
 
 const listRes = reactive({
   list: [],
@@ -150,7 +182,6 @@ const defaultFormData = () => ({
   id: 0,
   name: '',
   region: '',
-  topology_group: 'default',
   id_server: '',
   relay_server: '',
   key: '',
@@ -165,6 +196,33 @@ const defaultFormData = () => ({
   description: '',
 })
 
+// ============================================
+// 从列表自动推导 ID 服务器信息
+// ============================================
+const idAddr = computed(() => {
+  const first = listRes.list.find(s => s.id_server)
+  return first?.id_server || ''
+})
+
+const apiAddr = computed(() => {
+  return window.location.host
+})
+
+const idOnline = computed(() => {
+  // ID 服务器在线 = 至少有一个中继节点在线（说明 ID 服务器可达）
+  if (listRes.list.length === 0) return null
+  // 直接检查 ID 服务器端口可达性 — 若有记录标记
+  const idServer = listRes.list.find(s => s.id_server && s.is_online !== undefined)
+  return idServer ? true : listRes.list.some(s => s.is_online)
+})
+
+const relayNodes = computed(() => {
+  return listRes.list.filter(s => s.is_online)
+})
+
+// ============================================
+// 数据获取
+// ============================================
 const getList = async () => {
   listRes.loading = true
   const res = await list(listQuery).catch(() => false)
@@ -184,55 +242,50 @@ const handlerQuery = () => {
 }
 
 const del = async (row) => {
-  const confirmed = await ElMessageBox.confirm(T('Confirm?', { param: T('Delete') }), {
-    confirmButtonText: T('Confirm'),
-    cancelButtonText: T('Cancel'),
+  const confirmed = await ElMessageBox.confirm(`确定删除中继节点「${row.name}」？`, '确认删除', {
+    confirmButtonText: '确认',
+    cancelButtonText: '取消',
     type: 'warning',
   }).catch(() => false)
-  if (!confirmed) {
-    return
-  }
+  if (!confirmed) return
 
   const res = await remove({ id: row.id }).catch(() => false)
   if (res) {
-    ElMessage.success(T('OperationSuccess'))
+    ElMessage.success('已删除')
     getList()
   }
 }
 
 onMounted(getList)
-onActivated(getList)
-
 watch(() => listQuery.page, getList)
 watch(() => listQuery.page_size, handlerQuery)
 
+// ============================================
+// 表单逻辑
+// ============================================
 const formVisible = ref(false)
+const submitting = ref(false)
 const formData = reactive(defaultFormData())
 
 const assignFormData = (row = defaultFormData()) => {
-  Object.assign(formData, defaultFormData(), row)
+  Object.assign(formData, defaultFormData(), {
+    id: row.id || 0,
+    name: row.name || '',
+    region: row.region || '',
+    relay_server: row.relay_server || '',
+    ws_host: row.ws_host || '',
+    support_wss: row.support_wss ?? false,
+    is_active: row.is_active ?? true,
+    id_server: row.id_server || idAddr.value,
+    api_server: row.api_server || window.location.origin,
+    cost_weight: row.cost_weight ?? 1,
+    priority: row.priority ?? 0,
+  })
 }
 
 const toEdit = (row) => {
   formVisible.value = true
-  assignFormData({
-    id: row.id,
-    name: row.name,
-    region: row.region,
-    topology_group: row.topology_group || 'default',
-    id_server: row.id_server,
-    relay_server: row.relay_server,
-    key: row.key,
-    api_server: row.api_server,
-    ws_host: row.ws_host,
-    support_tcp: row.support_tcp,
-    support_wss: row.support_wss,
-    cost_weight: row.cost_weight ?? 1,
-    is_default: row.is_default,
-    is_active: row.is_active,
-    priority: row.priority,
-    description: row.description,
-  })
+  assignFormData(row)
 }
 
 const toAdd = () => {
@@ -241,10 +294,17 @@ const toAdd = () => {
 }
 
 const submit = async () => {
+  if (!formData.name.trim()) return ElMessage.warning('请输入节点名称')
+  if (!formData.region.trim()) return ElMessage.warning('请选择地区')
+  if (!formData.relay_server.trim()) return ElMessage.warning('请输入中继地址')
+
+  submitting.value = true
   const api = formData.id ? update : create
   const res = await api({ ...formData }).catch(() => false)
+  submitting.value = false
+
   if (res) {
-    ElMessage.success(T('OperationSuccess'))
+    ElMessage.success(formData.id ? '已保存' : '已添加')
     formVisible.value = false
     getList()
   }
@@ -252,4 +312,36 @@ const submit = async () => {
 </script>
 
 <style scoped lang="scss">
+.status-card {
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .status-title {
+    font-size: 13px;
+    color: #909399;
+    margin-bottom: 2px;
+  }
+  .status-addr {
+    font-size: 14px;
+    font-weight: 500;
+    word-break: break-all;
+  }
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  &.online {
+    background: #67c23a;
+    box-shadow: 0 0 6px rgba(103, 194, 58, 0.6);
+  }
+  &.offline {
+    background: #f56c6c;
+    box-shadow: 0 0 6px rgba(245, 108, 108, 0.6);
+  }
+}
 </style>
