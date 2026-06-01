@@ -31,9 +31,6 @@ ENV RELAY_KEY=
 # Expose ports
 EXPOSE 21117 21119
 
-# Volume for data
-VOLUME ["/data"]
-
 # Switch to non-root user
 USER rustdesk
 

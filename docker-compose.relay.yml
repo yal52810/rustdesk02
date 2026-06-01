@@ -22,6 +22,8 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - RELAY_KEY=${RELAY_KEY}
+    volumes:
+      - relay_data:/data
     networks:
       - relay-net
 
@@ -59,4 +61,5 @@ networks:
     driver: bridge
 
 volumes:
+  relay_data:
   nginx_logs:
