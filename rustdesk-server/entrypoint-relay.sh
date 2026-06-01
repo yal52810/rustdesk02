@@ -17,7 +17,14 @@ if [ -f "$KEY_FILE" ]; then
     echo "Using relay key from shared volume: $KEY_FILE"
 else
     KEY="${RELAY_KEY}"
-    echo "Key file not found after ${MAX_WAIT}s, using RELAY_KEY env var"
+    if [ -n "$KEY" ]; then
+        # hbbs doesn't write key file when -k is given a specific value,
+        # so write it ourselves to the shared volume for future reference.
+        echo "$KEY" > "$KEY_FILE"
+        echo "Wrote RELAY_KEY to shared volume: $KEY_FILE"
+    else
+        echo "Key file not found after ${MAX_WAIT}s, and RELAY_KEY is empty"
+    fi
 fi
 
 if [ -z "$KEY" ]; then
