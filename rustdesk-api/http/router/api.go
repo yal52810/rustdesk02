@@ -77,8 +77,10 @@ func ApiInit(g *gin.Engine) {
 	{
 		v := &api.Vip{}
 		frg.GET("/vip/servers", v.Servers)
+		frg.GET("/vip/packages", v.Packages)
 		frg.POST("/register", v.Register)
 		frg.POST("/vip/redeem", middleware.RustAuth(), v.Redeem)
+		frg.GET("/vip/client-config", middleware.RustAuth(), v.ClientConfig)
 	}
 	{
 		p := &api.Password{}

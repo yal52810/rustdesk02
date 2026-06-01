@@ -200,6 +200,77 @@ func (v *Vip) Register(c *gin.Context) {
 			service.Logger.Warn("send register success mail failed: ", err)
 		}
 	}
-	up := (&apiResp.UserPayload{}).FromUser(user)
-	c.JSON(http.StatusOK, up)
+	// Auto-login after registration
+	ut := service.AllService.UserService.Login(user, &model.LoginLog{
+		UserId: user.Id,
+		Client: model.LoginLogClientWebAdmin,
+		Uuid:   "",
+		Ip:     c.ClientIP(),
+		Type:   model.LoginLogTypeAccount,
+	})
+	response.Success(c, gin.H{
+		"token":    ut.Token,
+		"username": user.Username,
+		"email":    user.Email,
+		"is_admin": user.IsAdmin,
+		"status":   int(user.Status),
+	})
+}
+
+// Packages returns list of active packages for purchase display
+// @Tags VIP
+// @Summary 获取套餐列表
+// @Description 获取所有启用的套餐
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} model.PackageList
+// @Router /vip/packages [get]
+func (v *Vip) Packages(c *gin.Context) {
+	packages, err := service.AllService.PackageService.GetActivePackages()
+	if err != nil {
+		response.Error(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"list": packages})
+}
+
+// ClientConfig returns the client configuration string for the current user
+// @Tags VIP
+// @Summary 生成客户端配置
+// @Description 为当前用户生成客户端配置字符串（供手动导入客户端使用）
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} map[string]interface{}
+// @Router /vip/client-config [get]
+// @Security token
+func (v *Vip) ClientConfig(c *gin.Context) {
+	user := service.AllService.UserService.CurUser(c)
+	if user == nil {
+		response.Error(c, response.TranslateMsg(c, "UserNotFound"))
+		return
+	}
+
+	configResult := service.AllService.ServerConfigService.GetServerConfigSmart(user, "", false)
+
+	configStr := ""
+	if configResult.IdServer != "" {
+		configStr = configResult.IdServer + "\n" + configResult.RelayServer
+	}
+	if configResult.ApiServer != "" {
+		configStr += "\n" + configResult.ApiServer
+	}
+	if configResult.Key != "" {
+		configStr += "\n" + configResult.Key
+	}
+
+	serverInfo := gin.H{
+		"id_server":    configResult.IdServer,
+		"relay_server": configResult.RelayServer,
+		"api_server":   configResult.ApiServer,
+		"key":          configResult.Key,
+		"ws_host":      configResult.WsHost,
+		"config_str":   configStr,
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "config": serverInfo})
 }

@@ -25,6 +25,28 @@ export function listVipServers () {
   })
 }
 
+export function listVipPackages () {
+  return rawPortalRequest({
+    url: '/vip/packages',
+    method: 'get',
+  })
+}
+
+export function getClientConfig () {
+  return rawPortalRequest({
+    url: '/vip/client-config',
+    method: 'get',
+  })
+}
+
+export function vipRegister (data) {
+  return rawPortalRequest({
+    url: '/register',
+    method: 'post',
+    data,
+  })
+}
+
 export function redeemActivationCode (data) {
   return rawPortalRequest({
     url: '/vip/redeem',
