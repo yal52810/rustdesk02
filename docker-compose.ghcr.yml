@@ -97,6 +97,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "21116:21116"
       - "21117:21117"
     environment:
       - DOMAIN=${DOMAIN:-api.seset.xyz}
