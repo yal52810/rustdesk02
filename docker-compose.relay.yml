@@ -1,0 +1,62 @@
+# ============================================
+# RustDesk 中继节点独立部署 — TCP + WSS
+#
+# 用法:
+#   1. 把证书从中心节点拷贝到 certs/ 目录
+#   2. 创建 .env 或设置环境变量 DOMAIN=relay-bj.seset.xyz
+#      RELAY_KEY 必须与中心节点一致
+#   3. docker compose -f docker-compose.relay.yml up -d
+# ============================================
+# 镜像由 GitHub Actions 自动构建并推送到 GHCR:
+#   ghcr.io/yal52810/rustdesk-supervise-relay:latest
+# ============================================
+
+services:
+  # ========================================
+  # 中继服务器 (hbbr) — 端口 21117 / 21119
+  # ========================================
+  relay:
+    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
+    container_name: rustdesk-relay
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - RELAY_KEY=${RELAY_KEY}
+    networks:
+      - relay-net
+
+  # ========================================
+  # Nginx — TCP Stream (21117) + WSS (443)
+  # 启动时自动替换 __DOMAIN__ → 实际域名
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: rustdesk-relay-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "21117:21117"
+    environment:
+      - DOMAIN=${DOMAIN}
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "sed \"s/__DOMAIN__/$$DOMAIN/g\" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'",
+      ]
+    volumes:
+      - ./nginx-relay.conf.template:/etc/nginx/nginx.conf.template:ro
+      - ./certs:/etc/letsencrypt
+      - nginx_logs:/var/log/nginx
+    networks:
+      - relay-net
+    depends_on:
+      - relay
+
+networks:
+  relay-net:
+    driver: bridge
+
+volumes:
+  nginx_logs:

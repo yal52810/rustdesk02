@@ -1,6 +1,6 @@
 # ============================================
 # RustDesk 完整部署 - HTTPS + WebSocket
-# 域名: ${DOMAIN:-frptest.f11.yoga}
+# 域名: ${DOMAIN:-seset.xyz}
 # 镜像由 GitHub Actions 自动构建并推送到 GHCR
 # ============================================
 # 环境变量在 .env 文件中配置:
@@ -17,10 +17,10 @@ services:
     image: ghcr.io/yal52810/rustdesk-supervise-id:latest
     container_name: rustdesk-hbbs
     restart: always
-    command: hbbs -k ${ID_KEY:-_} -r ${DOMAIN:-frptest.f11.yoga}:21117
+    command: hbbs -k ${ID_KEY:-_} -r ${DOMAIN:-seset.xyz}:21117
     environment:
       - TZ=Asia/Shanghai
-      - RELAY_HOST=${DOMAIN:-frptest.f11.yoga}
+      - RELAY_HOST=${DOMAIN:-seset.xyz}
       - REDIS_URL=redis://redis:6379/
     volumes:
       - id_data:/data
@@ -44,11 +44,11 @@ services:
       - TZ=Asia/Shanghai
       - GIN_MODE=release
       # 域名配置 (通过 .env DOMAIN 变量统一管理)
-      - RUSTDESK_ID_SERVER=${DOMAIN:-frptest.f11.yoga}
-      - RUSTDESK_RELAY_SERVER=${DOMAIN:-frptest.f11.yoga}
+      - RUSTDESK_ID_SERVER=${DOMAIN:-seset.xyz}
+      - RUSTDESK_RELAY_SERVER=${DOMAIN:-seset.xyz}
       # ⚠️ 必须 https:// 前缀, 否则客户端不启用 WSS
-      - RUSTDESK_API_SERVER=https://${DOMAIN:-frptest.f11.yoga}
-      - RUSTDESK_WS_HOST=wss://${DOMAIN:-frptest.f11.yoga}
+      - RUSTDESK_API_SERVER=https://${DOMAIN:-seset.xyz}
+      - RUSTDESK_WS_HOST=wss://${DOMAIN:-seset.xyz}
       - RUSTDESK_FORCE_WSS=false
       - RUSTDESK_KEY=${ID_KEY:-}
     volumes:
@@ -93,7 +93,7 @@ services:
       - "443:443"
       - "21117:21117"
     environment:
-      - DOMAIN=${DOMAIN:-frptest.f11.yoga}
+      - DOMAIN=${DOMAIN:-seset.xyz}
     entrypoint:
       [
         "/bin/sh",
