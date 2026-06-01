@@ -22,6 +22,10 @@ services:
       - TZ=Asia/Shanghai
       - RELAY_HOST=${DOMAIN:-api.seset.xyz}
       - REDIS_URL=redis://redis:6379/
+    ports:
+      - "21116:21116"
+      - "21116:21116/udp"
+      - "21115:21115"
     volumes:
       - id_data:/data
     networks:
@@ -97,7 +101,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "21116:21116"
       - "21117:21117"
     environment:
       - DOMAIN=${DOMAIN:-api.seset.xyz}
