@@ -7,7 +7,7 @@ use std::{ops::DerefMut, str::FromStr};
 //use sqlx::postgres::PgPoolOptions;
 //use sqlx::mysql::MySqlPoolOptions;
 
-use chrono::{NaiveDateTime, Utc};
+// use chrono::{NaiveDateTime, Utc};
 type Pool = deadpool::managed::Pool<DbPool>;
 
 pub struct DbPool {

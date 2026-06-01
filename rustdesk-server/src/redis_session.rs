@@ -1,5 +1,3 @@
-use redis::AsyncCommands;
-
 /// Attempt to register a session for `user_id`/`device_id` with concurrent `limit`.
 /// This will add/update the device's score to current timestamp, then if the
 /// cardinality exceeds `limit` it will pop the oldest entries (ZPOPMIN).

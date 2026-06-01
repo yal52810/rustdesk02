@@ -7,6 +7,7 @@
 //! 用法: `io_loop` 中 `listener.accept()` 后调用 `accept_multiplex()` 替代直接 TCP 处理。
 
 use hbb_common::{
+    log,
     sodiumoxide::crypto::box_,
     stream_encrypt::EncryptedStream,
     tcp::FramedStream,

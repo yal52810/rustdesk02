@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::peer::*;
 use crate::redis_session; // added to call the redis_session module
-use hbb_common::bytes::BufMut;
 use hbb_common::{
     allow_err, bail,
     bytes::{Bytes, BytesMut},
@@ -19,10 +18,9 @@ use hbb_common::{
         *,
     },
     sodiumoxide::crypto::{
-        box_, box_::PublicKey, box_::SecretKey, secretbox, secretbox::Key, secretbox::Nonce, sign,
+        box_, box_::PublicKey, box_::SecretKey, secretbox, sign,
     },
     sodiumoxide::hex,
-    tcp,
     tcp::Encrypt,
     tcp::{listen_any, FramedStream},
     timeout,
@@ -46,7 +44,6 @@ use tokio_rustls::rustls::{Certificate, PrivateKey, ServerConfig};
 
 use crate::jwt;
 use serde_derive::Deserialize;
-use std::io::Error;
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -1820,7 +1817,7 @@ fn build_cn_cidrs() -> Vec<Ipv4Network> {
 }
 
 fn ip_to_region(ip: IpAddr, cn_cidrs: &[Ipv4Network]) -> String {
-    if ip.is_loopback() || ip.is_private() {
+    if ip.is_loopback() || matches!(ip, IpAddr::V4(v4) if v4.is_private()) {
         return "INTERNAL".to_string();
     }
     if let IpAddr::V4(v4) = ip {
