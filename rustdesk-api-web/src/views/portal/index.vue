@@ -74,14 +74,6 @@
             <el-form-item label="确认密码">
               <el-input v-model="registerForm.confirmPassword" type="password" show-password placeholder="再次输入密码" />
             </el-form-item>
-            <el-form-item>
-              <el-button text type="primary" @click="showActivationCode = !showActivationCode">
-                {{ showActivationCode ? '收起' : '有激活码？点此填写' }} <el-icon><component :is="showActivationCode ? 'ArrowUp' : 'ArrowDown'" /></el-icon>
-              </el-button>
-            </el-form-item>
-            <el-form-item v-if="showActivationCode" label="激活码">
-              <el-input v-model="registerForm.activation_code" placeholder="输入激活码立即激活套餐" @keyup.enter="submitRegister" />
-            </el-form-item>
             <el-button type="primary" class="action-btn" @click="submitRegister" :loading="authLoading">注册</el-button>
           </el-form>
 
@@ -365,7 +357,6 @@ const redeemForm = reactive({ code: '' })
 const changePwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
 const activeAuthTab = ref('login')
-const showActivationCode = ref(false)
 const userInfo = ref(null)
 const publicServers = ref([])
 const packages = ref([])
