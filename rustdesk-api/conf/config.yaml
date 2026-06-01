@@ -43,19 +43,19 @@ postgresql:
   time-zone: "Asia/Shanghai" # Time zone for PostgreSQL connection
 
 rustdesk:
-  # === 替换 example.com 为你的域名 ===
+  # === 替换 api.seset.xyz 为你的域名 ===
   # ID 服务器 (hbbs TCP端口 21116, 不加端口默认21116)
-  id-server: "example.com"
+  id-server: "api.seset.xyz"
   # 中继服务器 (hbbr TCP端口 21117, 不加端口默认21117)
-  relay-server: "example.com"
+  relay-server: "api.seset.xyz"
   # ⚠️ 关键: API 地址必须用 https:// 前缀，客户端才会启用 WSS
-  api-server: "https://example.com"
+  api-server: "https://api.seset.xyz"
   key: ""
   key-file: "/data/id_ed25519.pub"
   personal: 1
   webclient-magic-queryonline: 0
   # WebSocket 地址 (客户端通过 wss://domain/ws/id 和 /ws/relay 连接)
-  ws-host: "wss://example.com"
+  ws-host: "wss://api.seset.xyz"
   # 强制 WSS 模式 (所有客户端仅通过 443 端口 WSS 连接，用于绕过公司防火墙)
   force-wss: false
 logger:
@@ -79,7 +79,7 @@ jwt:
   expire-duration: 876000h
 ldap:
   enable: false
-  url: "ldap://ldap.example.com:389"
+  url: "ldap://ldap.api.seset.xyz:389"
   tls-ca-file: ""
   tls-verify: false
   base-dn: "dc=example,dc=com"
