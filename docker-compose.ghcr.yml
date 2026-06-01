@@ -83,7 +83,7 @@ services:
       - "21117:21117"
     volumes:
       - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/letsencrypt:ro
+      - ./certs:/etc/letsencrypt
       - nginx_logs:/var/log/nginx
     networks:
       - rustdesk-network
@@ -91,6 +91,28 @@ services:
       - web
       - hbbs
       - relay
+
+  # ========================================
+  # acme.sh 自动证书签发 + 续期 (Cloudflare DNS)
+  # ========================================
+  # 首次使用:
+  #   1. cp cf.env.example cf.env && 填入 CF Token
+  #   2. source cf.env && bash init-certs.sh
+  #   3. 取消下方注释并 docker compose up -d
+  # ========================================
+  # acme:
+  #   image: neilpang/acme.sh:latest
+  #   container_name: rustdesk-acme
+  #   restart: always
+  #   environment:
+  #     CF_Token: ${CF_Token}
+  #     CF_Account_ID: ${CF_Account_ID}
+  #   volumes:
+  #     - acme_data:/acme.sh
+  #     - ./certs:/etc/letsencrypt
+  #   command: daemon --reloadcmd "touch /etc/letsencrypt/.renewed"
+  #   networks:
+  #     - rustdesk-network
 
 networks:
   rustdesk-network:
@@ -101,3 +123,4 @@ volumes:
   web_data:
   web_logs:
   nginx_logs:
+  acme_data:
