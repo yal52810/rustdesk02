@@ -4,7 +4,7 @@
 # This Dockerfile expects the binary to be pre-built
 # and available at target/release/hbbr
 
-FROM debian:bookworm-slim
+FROM ubuntu:noble-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

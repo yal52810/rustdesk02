@@ -4,7 +4,7 @@
 # 由 GitHub Actions 构建: cargo build --release --bin hbbs
 # 编译产物: rustdesk-server/target/release/hbbs
 
-FROM debian:bookworm-slim
+FROM ubuntu:noble-slim
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
