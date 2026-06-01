@@ -11,8 +11,7 @@
           <div class="hero-brand">
             <img src="@/assets/logo.png" alt="logo" class="hero-logo" />
             <div>
-              <div class="hero-title">RustDesk 用户服务中心</div>
-              <div class="hero-subtitle">注册、登录、购买套餐、续费、获取客户端配置</div>
+              <div class="hero-title">RustDesk 用户中心</div>
             </div>
           </div>
         </div>
@@ -35,7 +34,7 @@
         <!-- Auth Card -->
         <section class="auth-card">
           <div class="card-title">账号中心</div>
-          <div class="card-desc">首次使用请注册。已有激活码可在注册时填写。</div>
+          <div class="card-desc">登录或注册账号，管理套餐与客户端配置</div>
           <div class="auth-tabs">
             <button v-for="tab in filteredAuthTabs" :key="tab.key" class="auth-tab"
               :class="{ active: activeAuthTab === tab.key }" @click="switchAuthTab(tab.key)">
