@@ -45,6 +45,7 @@ use std::io::BufReader;
 use tokio_rustls::rustls::{Certificate, PrivateKey, ServerConfig};
 
 use crate::jwt;
+use serde_derive::Deserialize;
 use std::io::Error;
 use std::{
     collections::HashMap,
@@ -53,14 +54,29 @@ use std::{
     sync::Arc,
     time::Instant,
 };
+use tokio::sync::RwLock;
 
 use chrono::Utc;
+
+#[derive(Clone, Debug, Deserialize)]
+struct ServerTopologyEntry {
+    name: String,
+    region: String,
+    relay_server: String,
+    priority: i32,
+    cost_weight: i32,
+    #[serde(default)]
+    support_wss: bool,
+    #[serde(default)]
+    ws_host: String,
+}
 
 #[derive(Clone, Debug)]
 enum Data {
     Msg(Box<RendezvousMessage>, SocketAddr),
     RelayServers0(String),
     RelayServers(RelayServers),
+    ServerTopology(Vec<ServerTopologyEntry>),
 }
 
 const REG_TIMEOUT: i32 = 30_000;
@@ -146,6 +162,8 @@ pub struct RendezvousServer {
     rendezvous_servers: Arc<Vec<String>>,
     inner: Arc<Inner>,
     ws_map: Arc<Mutex<HashMap<SocketAddr, Sink>>>,
+    server_topology: Arc<RwLock<Vec<ServerTopologyEntry>>>,
+    cn_cidrs: Arc<Vec<Ipv4Network>>,
 }
 
 enum LoopFailure {
@@ -199,6 +217,7 @@ impl RendezvousServer {
         };
         // For privacy use per connection key pair
         let (secure_tcp_pk_b, secure_tcp_sk_b) = box_::gen_keypair();
+        let cn_cidrs = build_cn_cidrs();
         let mut rs = Self {
             tcp_punch: Arc::new(Mutex::new(HashMap::new())),
             pm,
@@ -218,11 +237,21 @@ impl RendezvousServer {
                 tls_acceptor,
             }),
             ws_map: Arc::new(Mutex::new(HashMap::new())),
+            server_topology: Arc::new(RwLock::new(Vec::new())),
+            cn_cidrs: Arc::new(cn_cidrs),
         };
         log::info!("mask: {:?}", rs.inner.mask);
         log::info!("local-ip: {:?}", rs.inner.local_ip);
         std::env::set_var("PORT_FOR_API", port.to_string());
         rs.parse_relay_servers(&get_arg("relay-servers"));
+        // 初始加载服务器拓扑（异步，不阻塞启动）
+        let topo_rs = rs.server_topology.clone();
+        tokio::spawn(async move {
+            if let Some(topo) = fetch_server_topology().await {
+                *topo_rs.write().await = topo;
+                log::info!("Server topology loaded from Redis");
+            }
+        });
         let mut listener = create_tcp_listener(port).await?;
         let mut listener2 = create_tcp_listener(nat_port).await?;
         let mut listener3 = create_tcp_listener(ws_port).await?;
@@ -337,6 +366,7 @@ impl RendezvousServer {
         key: &str,
     ) -> LoopFailure {
         let mut timer_check_relay = interval(Duration::from_millis(CHECK_RELAY_TIMEOUT));
+        let mut timer_refresh_topology = interval(Duration::from_secs(30));
         loop {
             tokio::select! {
                 _ = timer_check_relay.tick() => {
@@ -348,11 +378,19 @@ impl RendezvousServer {
                         });
                     }
                 }
+                _ = timer_refresh_topology.tick() => {
+                    if let Some(topo) = fetch_server_topology().await {
+                        *self.server_topology.write().await = topo;
+                    }
+                }
                 Some(data) = rx.recv() => {
                     match data {
                         Data::Msg(msg, addr) => { allow_err!(socket.send(msg.as_ref(), addr).await); }
                         Data::RelayServers0(rs) => { self.parse_relay_servers(&rs); }
                         Data::RelayServers(rs) => { self.relay_servers = Arc::new(rs); }
+                        Data::ServerTopology(entries) => {
+                            *self.server_topology.write().await = entries;
+                        }
                     }
                 }
                 res = socket.next() => {
@@ -435,9 +473,11 @@ impl RendezvousServer {
                         socket.send(&msg_out, addr).await?;
                         if self.inner.serial > rp.serial {
                             let mut msg_out = RendezvousMessage::new();
+                            let relay_servers = self.build_relay_server_entries().await;
                             msg_out.set_configure_update(ConfigUpdate {
                                 serial: self.inner.serial,
                                 rendezvous_servers: (*self.rendezvous_servers).clone(),
+                                relay_servers,
                                 ..Default::default()
                             });
                             socket.send(&msg_out, addr).await?;
@@ -545,9 +585,11 @@ impl RendezvousServer {
                         Self::send_to_sink(sink, msg_out).await;
                         if self.inner.serial > rp.serial {
                             let mut msg_out = RendezvousMessage::new();
+                            let relay_servers = self.build_relay_server_entries().await;
                             msg_out.set_configure_update(ConfigUpdate {
                                 serial: self.inner.serial,
                                 rendezvous_servers: (*self.rendezvous_servers).clone(),
+                                relay_servers,
                                 ..Default::default()
                             });
                             Self::send_to_sink(sink, msg_out).await;
@@ -590,7 +632,7 @@ impl RendezvousServer {
                             // https://github.com/rustdesk/rustdesk-server/issues/24
                             rr.relay_server = self.inner.local_ip.clone();
                         } else if rr.relay_server == self.inner.local_ip {
-                            rr.relay_server = self.get_relay_server(addr.ip(), addr_b.ip());
+                            rr.relay_server = self.get_relay_server(addr.ip(), addr_b.ip()).await;
                         }
                     }
                     msg_out.set_relay_response(rr);
@@ -1081,7 +1123,12 @@ impl RendezvousServer {
             let mut msg_out = RendezvousMessage::new();
             let peer_is_lan = self.is_lan(peer_addr);
             let is_lan = self.is_lan(addr);
-            let mut relay_server = self.get_relay_server(addr.ip(), peer_addr.ip());
+            let mut relay_server = if !ph.relay_server.is_empty() {
+                // Viewer dictatorship: use the relay server chosen by the viewer
+                ph.relay_server.clone()
+            } else {
+                self.get_relay_server(addr.ip(), peer_addr.ip()).await
+            };
             if ALWAYS_USE_RELAY.load(Ordering::SeqCst) || (peer_is_lan ^ is_lan) {
                 if peer_is_lan {
                     // https://github.com/rustdesk/rustdesk-server/issues/24
@@ -1108,6 +1155,7 @@ impl RendezvousServer {
                 msg_out.set_fetch_local_addr(FetchLocalAddr {
                     socket_addr,
                     relay_server,
+                    relay_use_wss: ph.relay_use_wss,
                     ..Default::default()
                 });
             } else {
@@ -1121,6 +1169,7 @@ impl RendezvousServer {
                     socket_addr,
                     nat_type: ph.nat_type,
                     relay_server,
+                    relay_use_wss: ph.relay_use_wss,
                     ..Default::default()
                 });
             }
@@ -1256,7 +1305,47 @@ impl RendezvousServer {
         self.relay_servers = self.relay_servers0.clone();
     }
 
-    fn get_relay_server(&self, _pa: IpAddr, _pb: IpAddr) -> String {
+    async fn get_relay_server(&self, pa: IpAddr, pb: IpAddr) -> String {
+        let topology = self.server_topology.read().await.clone();
+
+        if topology.is_empty() {
+            return self.legacy_relay_server();
+        }
+
+        let region_a = ip_to_region(pa, &self.cn_cidrs);
+        let region_b = ip_to_region(pb, &self.cn_cidrs);
+
+        let mut scored: Vec<(i32, &ServerTopologyEntry)> = topology
+            .iter()
+            .map(|s| (score_server(s, &region_a, &region_b), s))
+            .collect();
+
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+
+        scored
+            .first()
+            .map(|(_, s)| s.relay_server.clone())
+            .unwrap_or_else(|| self.legacy_relay_server())
+    }
+
+    async fn build_relay_server_entries(&self) -> Vec<RelayServerEntry> {
+        let topology = self.server_topology.read().await.clone();
+        topology
+            .iter()
+            .map(|entry| RelayServerEntry {
+                name: entry.name.clone(),
+                region: entry.region.clone(),
+                relay_server: entry.relay_server.clone(),
+                priority: entry.priority,
+                cost_weight: entry.cost_weight,
+                support_wss: entry.support_wss,
+                ws_host: entry.ws_host.clone(),
+                ..Default::default()
+            })
+            .collect()
+    }
+
+    fn legacy_relay_server(&self) -> String {
         if self.relay_servers.is_empty() {
             return "".to_owned();
         } else if self.relay_servers.len() == 1 {
@@ -1400,10 +1489,10 @@ impl RendezvousServer {
                     if let Ok(a) = rs.parse::<IpAddr>() {
                         if let Some(rs) = fds.next() {
                             if let Ok(b) = rs.parse::<IpAddr>() {
-                                res = format!("{:?}", self.get_relay_server(a, b));
+                                res = format!("{:?}", self.get_relay_server(a, b).await);
                             }
                         } else {
-                            res = format!("{:?}", self.get_relay_server(a, a));
+                            res = format!("{:?}", self.get_relay_server(a, a).await);
                         }
                     }
                 }
@@ -1711,7 +1800,79 @@ impl RendezvousServer {
     }
 }
 
+fn build_cn_cidrs() -> Vec<Ipv4Network> {
+    [
+        "1.0.0.0/8", "14.0.0.0/8", "27.0.0.0/8", "36.0.0.0/8",
+        "42.0.0.0/8", "49.0.0.0/8", "58.0.0.0/8", "59.0.0.0/8",
+        "60.0.0.0/8", "61.0.0.0/8", "101.0.0.0/8", "106.0.0.0/8",
+        "110.0.0.0/8", "111.0.0.0/8", "112.0.0.0/8", "113.0.0.0/8",
+        "114.0.0.0/8", "115.0.0.0/8", "116.0.0.0/8", "117.0.0.0/8",
+        "118.0.0.0/8", "119.0.0.0/8", "120.0.0.0/8", "121.0.0.0/8",
+        "122.0.0.0/8", "123.0.0.0/8", "124.0.0.0/8", "125.0.0.0/8",
+        "175.0.0.0/8", "180.0.0.0/8", "182.0.0.0/8", "183.0.0.0/8",
+        "202.0.0.0/8", "203.0.0.0/8", "210.0.0.0/8", "211.0.0.0/8",
+        "218.0.0.0/8", "219.0.0.0/8", "220.0.0.0/8", "221.0.0.0/8",
+        "222.0.0.0/8", "223.0.0.0/8",
+    ]
+    .iter()
+    .filter_map(|s| s.parse().ok())
+    .collect()
+}
+
+fn ip_to_region(ip: IpAddr, cn_cidrs: &[Ipv4Network]) -> String {
+    if ip.is_loopback() || ip.is_private() {
+        return "INTERNAL".to_string();
+    }
+    if let IpAddr::V4(v4) = ip {
+        for net in cn_cidrs {
+            if net.contains(v4) {
+                return "CN".to_string();
+            }
+        }
+    }
+    "OTHER".to_string()
+}
+
+fn score_server(server: &ServerTopologyEntry, region_a: &str, region_b: &str) -> i32 {
+    let mut score: i32 = 0;
+
+    let srv_region = server.region.as_str();
+
+    if srv_region == region_a {
+        score += 100;
+    }
+    if srv_region == region_b {
+        score += 100;
+    }
+    if region_a == region_b && srv_region == region_a {
+        score += 200;
+    }
+
+    score += (server.priority.min(100) * 10) as i32;
+    score -= (server.cost_weight * 5) as i32;
+
+    score
+}
+
+async fn fetch_server_topology() -> Option<Vec<ServerTopologyEntry>> {
+    let redis_url = std::env::var("REDIS_URL")
+        .unwrap_or_else(|_| "redis://127.0.0.1:6379/".to_string());
+    let client = redis::Client::open(redis_url).ok()?;
+    let mut conn = client.get_async_connection().await.ok()?;
+    let json_str: String = redis::cmd("GET")
+        .arg("rustdesk:server_topology")
+        .query_async(&mut conn)
+        .await
+        .ok()?;
+    serde_json::from_str(&json_str).ok()
+}
+
 async fn check_relay_servers(rs0: Arc<RelayServers>, tx: Sender) {
+    // 同时刷新拓扑
+    if let Some(topo) = fetch_server_topology().await {
+        tx.send(Data::ServerTopology(topo)).ok();
+    }
+
     let mut futs = Vec::new();
     let rs = Arc::new(Mutex::new(Vec::new()));
     for x in rs0.iter() {

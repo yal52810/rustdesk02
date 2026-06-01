@@ -92,7 +92,7 @@ func (l *Login) Login(c *gin.Context) {
 	clientIP := geoIPService.GetClientIP(c.Request.RemoteAddr, c.GetHeader("X-Forwarded-For"), c.GetHeader("X-Real-IP"))
 
 	// 检测是否为受限环境（简化版本，可以根据实际情况优化）
-	isRestricted := false
+	isRestricted := global.Config.Rustdesk.ForceWSS
 
 	serverConfig := service.AllService.ServerConfigService.GetServerConfigSmart(u, clientIP, isRestricted)
 

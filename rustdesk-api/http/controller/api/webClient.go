@@ -32,12 +32,24 @@ func (i *WebClient) ServerConfig(c *gin.Context) {
 		pp.FromAddressBook(ab)
 		peers[ab.Id] = pp
 	}
+
+	geoIPService := &service.GeoIPService{}
+	clientIP := geoIPService.GetClientIP(c.Request.RemoteAddr, c.GetHeader("X-Forwarded-For"), c.GetHeader("X-Real-IP"))
+	isRestricted := global.Config.Rustdesk.ForceWSS
+
+	serverConfig := service.AllService.ServerConfigService.GetServerConfigSmart(u, clientIP, isRestricted)
+	relayServers := service.AllService.ServerService.GetRelayServerEntries()
+
 	response.Success(
 		c,
 		gin.H{
-			"id_server": global.Config.Rustdesk.IdServer,
-			"key":       global.Config.Rustdesk.Key,
-			"peers":     peers,
+			"id_server":     serverConfig.IdServer,
+			"key":           serverConfig.Key,
+			"relay_server":  serverConfig.RelayServer,
+			"relay_servers": relayServers,
+			"api_server":    serverConfig.ApiServer,
+			"ws_host":       serverConfig.WsHost,
+			"peers":         peers,
 		},
 	)
 }
@@ -100,11 +112,24 @@ func (i *WebClient) SharedPeer(c *gin.Context) {
 // @Router /server-config-v2 [get]
 // @Security token
 func (i *WebClient) ServerConfigV2(c *gin.Context) {
+	u := service.AllService.UserService.CurUser(c)
+
+	geoIPService := &service.GeoIPService{}
+	clientIP := geoIPService.GetClientIP(c.Request.RemoteAddr, c.GetHeader("X-Forwarded-For"), c.GetHeader("X-Real-IP"))
+	isRestricted := global.Config.Rustdesk.ForceWSS
+
+	serverConfig := service.AllService.ServerConfigService.GetServerConfigSmart(u, clientIP, isRestricted)
+	relayServers := service.AllService.ServerService.GetRelayServerEntries()
+
 	response.Success(
 		c,
 		gin.H{
-			"id_server": global.Config.Rustdesk.IdServer,
-			"key":       global.Config.Rustdesk.Key,
+			"id_server":     serverConfig.IdServer,
+			"key":           serverConfig.Key,
+			"relay_server":  serverConfig.RelayServer,
+			"relay_servers": relayServers,
+			"api_server":    serverConfig.ApiServer,
+			"ws_host":       serverConfig.WsHost,
 		},
 	)
 }

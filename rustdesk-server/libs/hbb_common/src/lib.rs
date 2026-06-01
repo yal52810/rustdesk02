@@ -1,6 +1,7 @@
 pub mod compress;
 pub mod platform;
 pub mod protos;
+pub mod stream_encrypt;
 pub use bytes;
 use config::Config;
 pub use futures;

@@ -17,8 +17,8 @@ enum ConnType {
 
 message RegisterPeerResponse { bool request_pk = 2; }
 
-message PunchHoleRequest { 
-  string id = 1; 
+message PunchHoleRequest {
+  string id = 1;
   NatType nat_type = 2;
   string licence_key = 3;
   ConnType conn_type = 4;
@@ -28,9 +28,11 @@ message PunchHoleRequest {
   bool force_relay = 8;
   int32 upnp_port = 9;
   bytes socket_addr_v6 = 10;
+  string relay_server = 11;    // viewer-chosen relay server (host:21117 or host:21119)
+  bool relay_use_wss = 12;     // viewer-chosen protocol: false=TCP, true=WSS
 }
 
-message PunchHole { 
+message PunchHole {
   bytes socket_addr = 1;
   string relay_server = 2;
   NatType nat_type = 3;
@@ -38,6 +40,7 @@ message PunchHole {
   bool force_relay = 5;
   int32 upnp_port = 6;
   bytes socket_addr_v6 = 7;
+  bool relay_use_wss = 8;     // viewer-chosen protocol: false=TCP, true=WSS
 }
 
 message TestNatRequest {
@@ -64,6 +67,7 @@ message PunchHoleSent {
   string version = 5;
   int32 upnp_port = 6;
   bytes socket_addr_v6 = 7;
+  bool relay_use_wss = 8;     // protocol chosen: false=TCP, true=WSS
 }
 
 message RegisterPk {
@@ -110,9 +114,20 @@ message PunchHoleResponse {
   bytes socket_addr_v6 = 11;
 }
 
+message RelayServerEntry {
+  string name = 1;
+  string region = 2;
+  string relay_server = 3;  // host:21117
+  int32 priority = 4;
+  int32 cost_weight = 5;
+  bool support_wss = 6;
+  string ws_host = 7;       // wss://host:21119
+}
+
 message ConfigUpdate {
   int32 serial = 1;
   repeated string rendezvous_servers = 2;
+  repeated RelayServerEntry relay_servers = 3;   // all available relay servers
 }
 
 message RequestRelay {
@@ -147,10 +162,11 @@ message SoftwareUpdate { string url = 1; }
 // even some router has below connection error if we connect itself,
 //  { kind: Other, error: "could not resolve to any address" },
 // so we request local address to connect.
-message FetchLocalAddr { 
-  bytes socket_addr = 1; 
+message FetchLocalAddr {
+  bytes socket_addr = 1;
   string relay_server = 2;
   bytes socket_addr_v6 = 3;
+  bool relay_use_wss = 4;     // protocol chosen: false=TCP, true=WSS
 }
 
 message LocalAddr {

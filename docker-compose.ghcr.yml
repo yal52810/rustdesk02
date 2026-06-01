@@ -16,6 +16,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - RELAY_HOST=frptest.f11.yoga
+      - REDIS_URL=redis://redis:6379/
     volumes:
       - id_data:/data
     networks:
@@ -40,6 +41,7 @@ services:
       # ⚠️ 必须 https:// 前缀, 否则客户端不启用 WSS
       - RUSTDESK_API_SERVER=https://frptest.f11.yoga
       - RUSTDESK_WS_HOST=wss://frptest.f11.yoga
+      - RUSTDESK_FORCE_WSS=false
       - RUSTDESK_KEY=${ID_KEY:-}
     volumes:
       - web_data:/app/data

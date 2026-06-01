@@ -56,6 +56,8 @@ rustdesk:
   webclient-magic-queryonline: 0
   # WebSocket 地址 (客户端通过 wss://domain/ws/id 和 /ws/relay 连接)
   ws-host: "wss://frptest.f11.yoga"
+  # 强制 WSS 模式 (所有客户端仅通过 443 端口 WSS 连接，用于绕过公司防火墙)
+  force-wss: false
 logger:
   path: "./runtime/log.txt"
   level: "info" #trace,debug,info,warn,error,fatal
