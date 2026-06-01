@@ -113,7 +113,6 @@ func (s *ServerService) GetRelayServerEntries() []RelayServerEntry {
 			Priority:    server.Priority,
 			CostWeight:  server.CostWeight,
 			SupportWSS:  server.SupportWSS,
-			WsHost:      server.WsHost,
 		})
 	}
 	return entries
