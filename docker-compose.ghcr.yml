@@ -53,7 +53,7 @@ services:
       # ⚠️ 必须 https:// 前缀, 否则客户端不启用 WSS
       - RUSTDESK_API_SERVER=https://${DOMAIN:-api.seset.xyz}
       - RUSTDESK_WS_HOST=wss://${DOMAIN:-api.seset.xyz}
-      - RUSTDESK_FORCE_WSS=false
+      - RUSTDESK_FORCE_WSS=true
       # Key 通过 config.yaml 的 key-file: /data/id_ed25519.pub 读取
       # 不再使用 RUSTDESK_KEY=${ID_KEY} 因为 ID_KEY 是私钥，不能传给 API 泄露给客户端
     volumes:
@@ -81,9 +81,9 @@ services:
     image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
     container_name: rustdesk-relay
     restart: always
+    command: hbbr -k ${ID_KEY:-_}
     environment:
       - TZ=Asia/Shanghai
-      - RELAY_KEY=${RELAY_KEY:-egwxkaHGAM4MnitF1eP56rJWTAwIUrJCNeCXaArbCrc=}
     volumes:
       - id_data:/data
     networks:

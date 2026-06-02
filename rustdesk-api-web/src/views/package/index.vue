@@ -1,17 +1,7 @@
 ﻿<template>
   <div>
     <el-card class="list-query" shadow="hover">
-      <el-alert
-        title="套餐规划建议"
-        type="info"
-        :closable="false"
-        show-icon
-      >
-        <template #default>
-          套餐建议只保留普通版和专业版。公司/校园网络属于线路能力，不建议单独作为第三种套餐。
-        </template>
-      </el-alert>
-      <el-form inline label-width="80px" style="margin-top: 16px">
+      <el-form inline label-width="80px">
         <el-form-item>
           <el-button type="primary" @click="handlerQuery">{{ T('Filter') }}</el-button>
           <el-button type="danger" @click="toAdd">{{ T('Add') }}</el-button>
@@ -106,7 +96,7 @@
             <el-option
               v-for="server in servers"
               :key="server.id"
-              :label="`${server.name}${server.support_wss ? '（公司/校园网络）' : ''}`"
+              :label="`${server.name}${server.support_wss ? '（专业线路）' : ''}`"
               :value="server.id"
             />
           </el-select>

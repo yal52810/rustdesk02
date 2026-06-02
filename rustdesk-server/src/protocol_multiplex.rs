@@ -17,7 +17,7 @@ use hbb_common::{
 
 /// 多路复用后的流类型
 pub enum MultiplexedStream {
-    /// TLS → WebSocket Secure 路径（公司内网穿透）
+    /// TLS → WebSocket Secure 路径（WSS 专业线路）
     Wss(FramedStream),
     /// ChaCha20-Poly1305 加密路径（公网白噪声）
     Encrypted(EncryptedStream<FramedStream>),

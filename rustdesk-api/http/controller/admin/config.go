@@ -67,8 +67,52 @@ func (co *Config) ServerConfig(c *gin.Context) {
 		Key:         global.Config.Rustdesk.Key,
 		RelayServer: global.Config.Rustdesk.RelayServer,
 		ApiServer:   global.Config.Rustdesk.ApiServer,
+		WsHost:      global.Config.Rustdesk.WsHost,
 	}
 	response.Success(c, cf)
+}
+
+type updateServerKeyReq struct {
+	Key    string `json:"key" binding:"required"`
+	WsHost string `json:"ws_host"`
+}
+
+// UpdateServerKey 更新统一密钥和WSS配置
+func (co *Config) UpdateServerKey(c *gin.Context) {
+	req := &updateServerKeyReq{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+
+	if global.Viper == nil {
+		response.Fail(c, 101, "config writer not initialized")
+		return
+	}
+
+	global.Viper.Set("rustdesk.key", req.Key)
+	global.Config.Rustdesk.Key = req.Key
+	if service.Config != nil {
+		service.Config.Rustdesk.Key = req.Key
+	}
+
+	if req.WsHost != "" {
+		global.Viper.Set("rustdesk.ws-host", req.WsHost)
+		global.Config.Rustdesk.WsHost = req.WsHost
+		if service.Config != nil {
+			service.Config.Rustdesk.WsHost = req.WsHost
+		}
+	}
+
+	if err := global.Viper.WriteConfig(); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{
+		"key":     global.Config.Rustdesk.Key,
+		"ws_host": global.Config.Rustdesk.WsHost,
+	})
 }
 
 // AppConfig APP服务配置

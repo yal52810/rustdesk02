@@ -251,6 +251,7 @@ func ConfigBind(rg *gin.RouterGroup) {
 	aRA.GET("/mail", rs.MailConfig)
 	aRA.POST("/mail", rs.UpdateMailConfig)
 	aRA.POST("/mail/test", rs.TestMailConfig)
+	aRA.POST("/server-key", rs.UpdateServerKey)
 
 }
 

@@ -9,6 +9,7 @@ type UserPayload struct {
 	IsAdmin      *bool                  `json:"is_admin"`
 	Status       int                    `json:"status"`
 	ValidDays    int                    `json:"valid_days"`
+	ExpiredAt    string                 `json:"expired_at"`
 	FirstLoginAt string                 `json:"first_login_at"`
 	DeviceLimit  int                    `json:"device_limit"`
 	Info         map[string]interface{} `json:"info"`
@@ -22,6 +23,10 @@ func (up *UserPayload) FromUser(user *model.User) *UserPayload {
 	up.ValidDays = user.ValidDays
 	if user.FirstLoginAt != nil {
 		up.FirstLoginAt = user.FirstLoginAt.Format("2006-01-02 15:04:05")
+		if user.ValidDays > 0 {
+			expiredAt := user.FirstLoginAt.AddDate(0, 0, user.ValidDays)
+			up.ExpiredAt = expiredAt.Format("2006-01-02 15:04:05")
+		}
 	}
 	up.DeviceLimit = user.DeviceLimit
 	up.Info = map[string]interface{}{

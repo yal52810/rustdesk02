@@ -53,6 +53,7 @@ type ServerConfigResponse struct {
 	Key         string `json:"key"`
 	RelayServer string `json:"relay_server"`
 	ApiServer   string `json:"api_server"`
+	WsHost      string `json:"ws_host"`
 }
 
 func TranslateMsg(c *gin.Context, messageId string) string {

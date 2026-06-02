@@ -1,10 +1,10 @@
 <template>
   <div>
     <!-- ======================================== -->
-    <!-- ID 服务器 + 全局在线状态 -->
+    <!-- ID 服务器 + 全局在线状态 + 统一密钥 -->
     <!-- ======================================== -->
     <el-row :gutter="16" style="margin-bottom: 16px">
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <span class="status-dot" :class="idOnline ? 'online' : 'offline'"></span>
@@ -18,7 +18,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <div>
@@ -29,7 +29,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <div>
@@ -39,6 +39,17 @@
             <el-tag :type="relayNodes.length > 0 ? 'success' : 'warning'" size="small" effect="dark">
               {{ relayNodes.length > 0 ? '正常' : '无节点' }}
             </el-tag>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="status-card key-card">
+          <div class="status-row key-row">
+            <div style="flex:1;min-width:0">
+              <div class="status-title">统一密钥</div>
+              <div class="status-addr mono-key">{{ serverKey || '未配置' }}</div>
+            </div>
+            <el-button text size="small" @click="showKeyDialog" type="primary">编辑</el-button>
           </div>
         </el-card>
       </el-col>
@@ -61,7 +72,7 @@
         <el-table-column label="类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="row.support_wss ? 'success' : ''" size="small">
-              {{ row.support_wss ? 'WSS 穿透' : 'TCP 标准' }}
+              {{ row.support_wss ? '专业线路' : 'TCP 标准线路' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -138,14 +149,14 @@
         <el-form-item label="中继地址" required>
           <el-input v-model="formData.relay_server" placeholder="例如：relay-bj.example.com:21117" />
         </el-form-item>
-        <el-form-item label="WSS 地址">
-          <el-input v-model="formData.ws_host" placeholder="公司/校园网络填写，例如：relay-bj.example.com:21119" />
+        <el-form-item label="专业线路地址">
+          <el-input v-model="formData.ws_host" placeholder="专业线路填写，例如：relay-bj.example.com:21119" />
         </el-form-item>
         <el-divider content-position="left" style="margin: 8px 0">高级选项</el-divider>
         <el-form-item label="连接类型">
           <el-radio-group v-model="formData.support_wss">
             <el-radio :value="false">TCP 标准线路</el-radio>
-            <el-radio :value="true">WSS 深层穿透</el-radio>
+            <el-radio :value="true">专业线路</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="启用节点">
@@ -159,12 +170,32 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- ======================================== -->
+    <!-- 统一密钥编辑对话框 -->
+    <!-- ======================================== -->
+    <el-dialog v-model="keyDialogVisible" title="编辑统一密钥" width="520px" :close-on-click-modal="false">
+      <el-form :model="keyForm" label-width="100px">
+        <el-form-item label="统一密钥">
+          <el-input v-model="keyForm.key" placeholder="输入密钥，留空则自动生成" />
+          <div class="key-hint">修改密钥后需重启 hbbs/hbbr 服务生效。客户端需要使用相同密钥才能连接。</div>
+        </el-form-item>
+        <el-form-item label="专业线路地址">
+          <el-input v-model="keyForm.ws_host" placeholder="例如：wss://api.example.com" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="keyDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveKey" :loading="keySaving">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { list, create, update, remove } from '@/api/server'
+import { getServerConfig, updateServerKey } from '@/api/config'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const listRes = reactive({
@@ -256,6 +287,45 @@ const del = async (row) => {
   }
 }
 
+// ============================================
+// 统一密钥管理
+// ============================================
+const serverKey = ref('')
+const keyDialogVisible = ref(false)
+const keySaving = ref(false)
+const keyForm = reactive({
+  key: '',
+  ws_host: '',
+})
+
+const loadServerKey = async () => {
+  const res = await getServerConfig().catch(() => false)
+  if (res && res.data) {
+    serverKey.value = res.data.key || ''
+    keyForm.key = res.data.key || ''
+    keyForm.ws_host = res.data.ws_host || ''
+  }
+}
+
+const showKeyDialog = () => {
+  keyDialogVisible.value = true
+}
+
+const saveKey = async () => {
+  keySaving.value = true
+  const res = await updateServerKey({
+    key: keyForm.key,
+    ws_host: keyForm.ws_host,
+  }).catch(() => false)
+  keySaving.value = false
+  if (res) {
+    serverKey.value = keyForm.key
+    ElMessage.success('密钥已更新，请重启 hbbs/hbbr 服务生效')
+    keyDialogVisible.value = false
+  }
+}
+
+onMounted(loadServerKey)
 onMounted(getList)
 watch(() => listQuery.page, getList)
 watch(() => listQuery.page_size, handlerQuery)
@@ -343,5 +413,20 @@ const submit = async () => {
     background: #f56c6c;
     box-shadow: 0 0 6px rgba(245, 108, 108, 0.6);
   }
+}
+
+.key-card .key-row {
+  justify-content: space-between;
+}
+.mono-key {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.key-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  line-height: 1.5;
 }
 </style>

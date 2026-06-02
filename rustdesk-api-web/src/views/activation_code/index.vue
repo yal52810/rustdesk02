@@ -2,13 +2,13 @@
   <div>
     <el-card shadow="hover">
       <el-alert
-        title="激活码说明"
+        title="提示"
         type="info"
         :closable="false"
         show-icon
       >
         <template #default>
-          选择套餐后，激活码会自动继承套餐对应的线路权限。客户端兑换后，账号有效期、设备限制和默认线路会一起生效。
+          创建激活码时选择套餐，激活后自动获得套餐对应的有效期、设备数、线路和传输限额。
         </template>
       </el-alert>
 
@@ -90,6 +90,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="selectedPackageFeatures" label="套餐功能">
+          <div class="pkg-features">
+            <el-tag size="small" type="success">{{ selectedPackageFeatures.valid_days }} 天</el-tag>
+            <el-tag size="small" type="warning">{{ selectedPackageFeatures.device_limit }} 设备</el-tag>
+            <el-tag size="small" type="info">{{ selectedPackageFeatures.file_transfer_limit_mb || 100 }} MB 传输</el-tag>
+            <el-tag v-for="s in (selectedPackageFeatures.servers || [])" :key="s.id" size="small" :type="s.support_wss ? 'success' : ''">
+              {{ s.name }}{{ s.support_wss ? ' 专业线路' : '' }}
+            </el-tag>
+          </div>
+        </el-form-item>
         <el-form-item label="有效天数" required>
           <el-input-number v-model="createForm.valid_days" :min="1" />
         </el-form-item>
@@ -126,6 +136,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="selectedBatchPackageFeatures" label="套餐功能">
+          <div class="pkg-features">
+            <el-tag size="small" type="success">{{ selectedBatchPackageFeatures.valid_days }} 天</el-tag>
+            <el-tag size="small" type="warning">{{ selectedBatchPackageFeatures.device_limit }} 设备</el-tag>
+            <el-tag size="small" type="info">{{ selectedBatchPackageFeatures.file_transfer_limit_mb || 100 }} MB 传输</el-tag>
+            <el-tag v-for="s in (selectedBatchPackageFeatures.servers || [])" :key="s.id" size="small" :type="s.support_wss ? 'success' : ''">
+              {{ s.name }}{{ s.support_wss ? ' 专业线路' : '' }}
+            </el-tag>
+          </div>
+        </el-form-item>
         <el-form-item label="数量" required>
           <el-input-number v-model="batchCreateForm.count" :min="1" :max="1000" />
         </el-form-item>
@@ -156,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { list as getActivationCodeList, create, batchCreate, remove } from '@/api/activationCode'
 import { list as packages } from '@/api/package'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -216,6 +236,13 @@ const applyPackageDefaults = (formRef, packageId) => {
   formRef.value.valid_days = selectedPackage.valid_days
   formRef.value.device_limit = selectedPackage.device_limit
 }
+
+const selectedPackageFeatures = computed(() => {
+  return packagesList.value.find(p => p.id === createForm.value.package_id) || null
+})
+const selectedBatchPackageFeatures = computed(() => {
+  return packagesList.value.find(p => p.id === batchCreateForm.value.package_id) || null
+})
 
 watch(() => createForm.value.package_id, (newVal) => applyPackageDefaults(createForm, newVal))
 watch(() => batchCreateForm.value.package_id, (newVal) => applyPackageDefaults(batchCreateForm, newVal))
@@ -323,3 +350,12 @@ onMounted(() => {
   getPackages()
 })
 </script>
+
+<style scoped>
+.pkg-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+</style>

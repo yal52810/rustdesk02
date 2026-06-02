@@ -18,8 +18,14 @@
         <div class="hero-status" v-if="isLoggedIn && userInfo">
           <div class="status-label">当前账号</div>
           <div class="status-value">{{ userInfo.username || userStore.username }}</div>
-          <div class="status-meta">{{ packageLabel }}</div>
-          <div class="status-meta" v-if="userInfo.expired_at">到期：{{ userInfo.expired_at }}</div>
+          <div class="status-meta">
+            <el-tag :type="packageTypeTag" size="small" effect="dark">{{ packageLabel }}</el-tag>
+          </div>
+          <div class="status-meta expire-info" v-if="userInfo.expired_at">
+            到期：<strong>{{ userInfo.expired_at }}</strong>
+            <el-tag :type="expireStatusTag" size="small" effect="plain" style="margin-left: 8px">{{ expireStatusText }}</el-tag>
+          </div>
+          <div class="status-meta" v-else>未开通套餐</div>
           <div class="hero-actions">
             <el-button v-if="isAdmin" type="primary" size="small" @click="goAdmin">管理后台</el-button>
             <el-button text class="logout-btn" @click="logout">退出登录</el-button>
@@ -300,7 +306,7 @@
                 </div>
                 <div class="config-item">
                   <div class="config-key">连接类型</div>
-                  <div class="config-val">{{ selectedServer.support_wss ? 'WSS 穿透' : 'TCP 标准' }}</div>
+                  <div class="config-val">{{ selectedServer.support_wss ? '专业线路' : 'TCP 标准线路' }}</div>
                 </div>
               </div>
 
@@ -410,6 +416,23 @@ const previewServer = computed(() => {
 const transferLimitText = computed(() => {
   const mb = userInfo.value?.package?.file_transfer_limit_mb || userInfo.value?.info?.file_transfer_limit_mb || 100
   return `${mb} MB`
+})
+const packageTypeTag = computed(() => {
+  const name = (userInfo.value?.package?.name || userInfo.value?.info?.package_name || '').toLowerCase()
+  if (name.includes('pro') || name.includes('专业') || name.includes('premium')) return 'success'
+  if (name.includes('free') || name.includes('免费')) return 'info'
+  return ''
+})
+const expireStatusTag = computed(() => {
+  if (daysRemaining.value > 30) return 'success'
+  if (daysRemaining.value > 7) return 'warning'
+  return 'danger'
+})
+const expireStatusText = computed(() => {
+  if (daysRemaining.value > 30) return '正常'
+  if (daysRemaining.value > 7) return '即将到期'
+  if (daysRemaining.value > 0) return '即将过期'
+  return '已过期'
 })
 
 watch(() => route.fullPath, syncTabFromRoute)
@@ -656,6 +679,7 @@ onBeforeUnmount(() => { if (codeTimer) { clearInterval(codeTimer); codeTimer = n
 .status-label, .summary-label, .config-key { font-size: 13px; color: #6f84ab; }
 .status-value { font-size: 24px; margin-top: 8px; color: #193b88; font-weight: 700; }
 .status-meta { margin-top: 6px; color: #376df3; }
+.expire-info strong { color: #e63946; }
 .logout-btn { margin-top: 12px; }
 .hero-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 8px; }
 

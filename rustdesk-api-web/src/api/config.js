@@ -43,3 +43,18 @@ export function testMail (data) {
     data,
   })
 }
+
+export function getServerConfig () {
+  return request({
+    url: '/config/server',
+    method: 'get',
+  })
+}
+
+export function updateServerKey (data) {
+  return request({
+    url: '/config/server-key',
+    method: 'post',
+    data,
+  })
+}
