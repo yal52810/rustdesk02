@@ -370,7 +370,7 @@ const selectedServerId = ref(null)
 const codeCountdown = ref(0)
 const resetLoading = ref(false)
 const captchaCode = ref(null)
-const allowRegister = ref(true)
+const allowRegister = ref(false)
 const authLoading = ref(false)
 const redeemLoading = ref(false)
 const changingPwd = ref(false)
@@ -506,13 +506,13 @@ const submitRegister = async () => {
   authLoading.value = true
   const res = await vipRegister({
     username: registerForm.username,
-    email: registerForm.email,
     password: registerForm.password,
     confirm_password: registerForm.confirmPassword,
     activation_code: registerForm.activation_code,
-  }).catch(() => false)
+  }).catch(() => null)
   authLoading.value = false
-  if (!res) return
+  if (!res) { ElMessage.error('注册失败，请检查网络连接或联系管理员'); return }
+  if (res.error) { ElMessage.error(res.error); return }
   if (res.data) {
     userStore.saveUserData(res.data)
   }
