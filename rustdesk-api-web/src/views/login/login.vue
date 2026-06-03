@@ -90,7 +90,12 @@
     const res = await userStore.login(form).catch(e => e)
     if (!res.code) {
       ElMessage.success(T('LoginSuccess'))
-      router.push({ path: redirect || '/', replace: true })
+      const isAdmin = res.data.is_admin
+      if (redirect) {
+        router.push({ path: redirect, replace: true })
+      } else {
+        router.push({ path: isAdmin ? '/user/index' : '/portal', replace: true })
+      }
       return
     }
     if (res.code === 110) {
@@ -158,7 +163,12 @@
         // 删除code，确保跳转之前对code进行清楚
         removeCode()
         ElMessage.success(T('LoginSuccess'))
-        router.push({ path: redirect || '/', replace: true })
+        const isAdmin = res.is_admin
+        if (redirect) {
+          router.push({ path: redirect, replace: true })
+        } else {
+          router.push({ path: isAdmin ? '/user/index' : '/portal', replace: true })
+        }
       }
     } else {
       // 如果code不存在, 现实登陆页面
