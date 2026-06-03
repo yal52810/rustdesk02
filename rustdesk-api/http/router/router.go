@@ -13,11 +13,6 @@ func WebInit(g *gin.Engine) {
 	i := &web.Index{}
 	g.GET("/", i.Index)
 
-	// 用户中心快捷入口
-	g.GET("/portal", func(c *gin.Context) { c.Redirect(302, "/_admin/#/portal") })
-	g.GET("/login", func(c *gin.Context) { c.Redirect(302, "/_admin/#/login") })
-	g.GET("/register", func(c *gin.Context) { c.Redirect(302, "/_admin/#/register") })
-
 	if global.Config.App.WebClient == 1 {
 		g.GET("/webclient-config/index.js", i.ConfigJs)
 		g.StaticFS("/webclient", http.Dir(global.Config.Gin.ResourcesPath+"/web"))
