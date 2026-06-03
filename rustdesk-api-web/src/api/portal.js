@@ -10,7 +10,7 @@ function rawPortalRequest (config) {
     headers['api-token'] = token
   }
   return axios({
-    baseURL: import.meta.env.VITE_SERVER_API,
+    baseURL: '/api',
     timeout: 50000,
     withCredentials: true,
     ...config,

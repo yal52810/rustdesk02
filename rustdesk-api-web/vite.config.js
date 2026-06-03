@@ -23,9 +23,8 @@ const conf = {
     open: true,
     port: process.env.VITE_DEV_PORT,
     proxy: {
-      [process.env.VITE_SERVER_API]: {
+      '/api': {
         target: process.env.VITE_SERVER_PATH,
-        // rewrite: path => path.replace(/^\/api/, '/api'), //为了模拟
         changeOrigin: true,
       },
     },
