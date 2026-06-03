@@ -46,8 +46,12 @@
         <el-card shadow="hover" class="status-card key-card">
           <div class="status-row key-row">
             <div style="flex:1;min-width:0">
-              <div class="status-title">统一密钥</div>
-              <div class="status-addr mono-key">{{ serverKey || '未配置' }}</div>
+              <div class="status-title">全局配置</div>
+              <div class="status-addr mono-key">{{ globalServerConfig.key || '密钥未配置' }}</div>
+              <div style="font-size:11px;color:#909399;margin-top:2px">
+                <span v-if="globalServerConfig.card_shop_url">发卡网已设置</span>
+                <span v-else>发卡网未设置</span>
+              </div>
             </div>
             <el-button text size="small" @click="showKeyDialog" type="primary">编辑</el-button>
           </div>
@@ -246,11 +250,20 @@ const defaultFormData = () => ({
 })
 
 // ============================================
-// 从列表自动推导 ID 服务器信息
+// 全局服务器配置（从 /config/server 加载）
 // ============================================
+const globalServerConfig = ref({
+  id_server: '',
+  relay_server: '',
+  api_server: '',
+  key: '',
+  ws_host: '',
+  card_shop_url: '',
+})
+
 const idAddr = computed(() => {
-  const first = listRes.list.find(s => s.id_server)
-  return first?.id_server || ''
+  // 优先从全局配置读取，其次从节点列表
+  return globalServerConfig.value.id_server || (listRes.list.find(s => s.id_server)?.id_server) || ''
 })
 
 const apiAddr = computed(() => {
@@ -259,7 +272,6 @@ const apiAddr = computed(() => {
 
 const idOnline = computed(() => {
   if (listRes.list.length === 0) return null
-  // 有 id_server 的节点全部在线才算 ID 服务器在线
   const idServers = listRes.list.filter(s => s.id_server)
   if (idServers.length === 0) return null
   return idServers.every(s => s.is_online)
@@ -334,6 +346,14 @@ const recheckAll = async () => {
 const loadServerKey = async () => {
   const res = await getServerConfig().catch(() => false)
   if (res && res.data) {
+    globalServerConfig.value = {
+      id_server: res.data.id_server || '',
+      relay_server: res.data.relay_server || '',
+      api_server: res.data.api_server || '',
+      key: res.data.key || '',
+      ws_host: res.data.ws_host || '',
+      card_shop_url: res.data.card_shop_url || '',
+    }
     serverKey.value = res.data.key || ''
     keyForm.id_server = res.data.id_server || ''
     keyForm.relay_server = res.data.relay_server || ''
