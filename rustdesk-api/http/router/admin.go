@@ -366,5 +366,6 @@ func ServerBind(rg *gin.RouterGroup) {
 		aR.POST("/create", cont.Create)
 		aR.POST("/update", cont.Update)
 		aR.POST("/delete", cont.Delete)
+		aR.POST("/check", cont.Check)
 	}
 }

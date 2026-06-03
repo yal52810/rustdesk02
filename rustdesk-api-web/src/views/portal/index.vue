@@ -102,7 +102,12 @@
         <!-- Public Packages + Server Preview -->
         <section class="preview-card">
           <div class="card-title">套餐预览</div>
-          <div class="card-desc">以下为可购买套餐。购买后获得激活码，注册时填写或登录后激活。</div>
+          <div class="card-desc">
+            以下为可购买套餐。购买后获得激活码，注册时填写或登录后激活。
+            <a v-if="cardShopUrl" :href="cardShopUrl" target="_blank" class="card-shop-link">
+              <el-button type="success" size="small">前往发卡网购买</el-button>
+            </a>
+          </div>
 
           <div v-if="packages.length > 0" class="pkg-grid">
             <div v-for="pkg in packages" :key="pkg.id" class="pkg-item">
@@ -117,39 +122,6 @@
             </div>
           </div>
           <el-empty v-else description="暂无可购买套餐" />
-
-          <div class="card-title" style="margin-top: 28px">公开线路</div>
-          <div class="card-desc">所有线路互通，共享账号体系和 ID 服务。</div>
-          <el-empty v-if="publicServers.length === 0" description="暂无可用线路" />
-          <div v-else class="preview-server-list">
-            <button v-for="server in publicServers" :key="server.id"
-              class="server-pill" :class="{ active: selectedPreviewServerId === server.id }"
-              @click="selectedPreviewServerId = server.id">
-              {{ server.name }}
-            </button>
-          </div>
-          <div v-if="previewServer" class="config-grid compact">
-            <div class="config-item">
-              <div class="config-key">ID 服务器</div>
-              <div class="config-val">{{ previewServer.id_server || '-' }}</div>
-            </div>
-            <div class="config-item">
-              <div class="config-key">中继服务器</div>
-              <div class="config-val">{{ previewServer.relay_server || '-' }}</div>
-            </div>
-            <div class="config-item">
-              <div class="config-key">状态</div>
-              <div class="config-val">
-                <span class="line-status" :class="previewServer.is_online ? 'online' : 'offline'">
-                  {{ previewServer.is_online ? '在线' : '离线' }}
-                </span>
-              </div>
-            </div>
-            <div class="config-item">
-              <div class="config-key">API</div>
-              <div class="config-val">{{ previewServer.api_server || currentOrigin }}</div>
-            </div>
-          </div>
         </section>
       </div>
 
@@ -210,7 +182,12 @@
         <div class="logged-row">
           <section class="purchase-card">
             <div class="card-title">购买 / 续费套餐</div>
-            <div class="card-desc">选择套餐后联系管理员购买激活码，在右侧激活码框激活生效</div>
+            <div class="card-desc">
+              选择套餐后购买激活码，在右侧激活码框激活生效
+              <a v-if="cardShopUrl" :href="cardShopUrl" target="_blank" class="card-shop-link">
+                <el-button type="success" size="small">前往发卡网购买</el-button>
+              </a>
+            </div>
             <div v-if="packages.length > 0" class="pkg-grid">
               <div v-for="pkg in packages" :key="pkg.id"
                 class="pkg-item" :class="{ current: userInfo.package_id === pkg.id }">
@@ -296,33 +273,27 @@
                   <div class="config-val mono">{{ selectedServer.key || '-' }}</div>
                   <el-button text size="small" @click="copyText(selectedServer.key)">复制</el-button>
                 </div>
-                <div class="config-item" v-if="selectedServer.ws_host">
-                  <div class="config-key">WebSocket 地址</div>
-                  <div class="config-val mono">{{ selectedServer.ws_host }}</div>
-                  <el-button text size="small" @click="copyText(selectedServer.ws_host)">复制</el-button>
-                </div>
                 <div class="config-item">
                   <div class="config-key">连接类型</div>
                   <div class="config-val">{{ selectedServer.support_wss ? '专业线路' : 'TCP 标准线路' }}</div>
                 </div>
               </div>
 
-              <el-divider>客户端配置导入</el-divider>
+              <el-divider>一键配置</el-divider>
               <div class="client-config-section">
-                <div class="config-hint">将以下配置字符串导入客户端，或复制 ID/中继信息到客户端手动填写。</div>
-                <div class="config-textarea-wrap">
-                  <el-input v-model="clientConfigStr" type="textarea" :rows="4" readonly resize="none"
+                <div class="config-hint">生成配置字符串后，在客户端粘贴即可自动配置。</div>
+                <div class="config-textarea-wrap" v-if="clientConfigStr">
+                  <el-input v-model="clientConfigStr" type="textarea" :rows="3" readonly resize="none"
                     class="config-textarea" />
                 </div>
-                <el-button type="primary" size="small" @click="generateClientConfig" :loading="configLoading">
-                  生成配置
-                </el-button>
-                <el-button size="small" @click="copyText(clientConfigStr)" :disabled="!clientConfigStr">
-                  复制配置
-                </el-button>
-                <el-button size="small" @click="downloadConfig" :disabled="!clientConfigStr">
-                  下载配置
-                </el-button>
+                <div style="display:flex;gap:10px">
+                  <el-button type="primary" size="small" @click="generateClientConfig" :loading="configLoading">
+                    生成配置
+                  </el-button>
+                  <el-button size="small" @click="copyText(clientConfigStr)" :disabled="!clientConfigStr">
+                    复制
+                  </el-button>
+                </div>
               </div>
             </div>
           </section>
@@ -373,6 +344,7 @@ const redeemLoading = ref(false)
 const changingPwd = ref(false)
 const configLoading = ref(false)
 const clientConfigStr = ref('')
+const cardShopUrl = ref('')
 let codeTimer = null
 
 const syncTabFromRoute = () => {
@@ -457,7 +429,10 @@ const refreshPortal = async () => {
 
 const loadPublicServers = async () => {
   const res = await listVipServers().catch(() => false)
-  if (res?.list) publicServers.value = res.list
+  if (res?.list) {
+    publicServers.value = res.list
+    cardShopUrl.value = res.card_shop_url || ''
+  }
 }
 const loadPackages = async () => {
   const res = await listVipPackages().catch(() => false)
@@ -576,6 +551,7 @@ const generateClientConfig = async () => {
   configLoading.value = false
   if (res?.config?.config_str) {
     clientConfigStr.value = res.config.config_str
+    cardShopUrl.value = res.config.card_shop_url || ''
     ElMessage.success('配置已生成')
   } else {
     ElMessage.error('生成配置失败')
@@ -826,6 +802,13 @@ onBeforeUnmount(() => { if (codeTimer) { clearInterval(codeTimer); codeTimer = n
 .config-textarea-wrap { width: 100%; }
 .config-textarea :deep(textarea) { font-family: Consolas, Monaco, monospace; font-size: 13px; border-radius: 14px; }
 
+// Card shop link
+.card-shop-link {
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 // Redeem card mini-form
 .mini-form { margin-top: 4px; }
 
@@ -837,5 +820,63 @@ onBeforeUnmount(() => { if (codeTimer) { clearInterval(codeTimer); codeTimer = n
   .hero-card { flex-direction: column; }
   .portal-page { padding: 20px 16px 36px; }
   .summary-grid { grid-template-columns: 1fr; }
+  .pkg-grid { grid-template-columns: 1fr; }
+  .config-grid { grid-template-columns: 1fr; }
+}
+
+// Mobile
+@media (max-width: 600px) {
+  .portal-page { padding: 12px 10px 24px; }
+
+  .hero-card { padding: 18px 16px; border-radius: 18px; margin-bottom: 14px; }
+  .hero-logo { width: 36px; height: 36px; }
+  .hero-title { font-size: 20px; }
+  .hero-status { padding: 14px 16px; border-radius: 14px; min-width: auto; }
+  .status-value { font-size: 18px; margin-top: 4px; }
+
+  .auth-card, .preview-card, .summary-card, .plan-card, .purchase-card, .redeem-card, .server-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  .card-title { font-size: 17px; margin-bottom: 4px; }
+  .card-desc { font-size: 13px; margin-bottom: 10px; }
+
+  .auth-tabs { gap: 6px; margin: 14px 0 12px; }
+  .auth-tab { padding: 8px 12px; font-size: 13px; }
+
+  .portal-grid { gap: 14px; }
+  .logged-row { gap: 14px; }
+
+  .summary-item { padding: 12px 14px; border-radius: 12px; }
+  .summary-value { font-size: 15px; }
+
+  .plan-name { font-size: 17px; }
+  .days-num { font-size: 26px; }
+  .days-badge { padding: 8px 14px; min-width: 70px; border-radius: 12px; }
+  .days-bar { height: 8px; }
+  .plan-meta { gap: 8px; font-size: 12px; }
+  .days-unit { font-size: 12px; }
+
+  .pkg-item { padding: 12px; border-radius: 12px; }
+  .pkg-name { font-size: 14px; }
+  .pkg-price { font-size: 18px; margin-top: 6px; }
+  .pkg-meta { font-size: 11px; gap: 6px; }
+
+  .server-option { min-width: auto; padding: 10px 12px; }
+  .config-item { padding: 10px 12px; border-radius: 10px; }
+  .config-val { font-size: 12px; }
+
+  .hero-actions { justify-content: flex-start; }
+
+  :deep(.el-input__wrapper) { min-height: 38px; border-radius: 10px; }
+  :deep(.el-button) { font-size: 13px; }
+  .action-btn { min-height: 38px; border-radius: 10px; }
+
+  .inline-field { grid-template-columns: 1fr 110px; gap: 8px; }
+  .captcha-field { grid-template-columns: 1fr 140px; gap: 8px; }
+  .captcha-image { width: 140px; height: 46px; border-radius: 10px; }
+
+  .status-label, .summary-label, .config-key { font-size: 11px; }
+  .config-item .el-button { font-size: 11px; }
 }
 </style>

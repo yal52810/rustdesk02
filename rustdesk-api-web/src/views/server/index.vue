@@ -62,7 +62,10 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span><b>中继节点管理</b></span>
-          <el-button type="primary" size="small" @click="toAdd">+ 添加节点</el-button>
+          <div style="display:flex;gap:8px">
+            <el-button size="small" @click="recheckAll" :loading="rechecking">检测在线状态</el-button>
+            <el-button type="primary" size="small" @click="toAdd">+ 添加节点</el-button>
+          </div>
         </div>
       </template>
 
@@ -146,6 +149,9 @@
             <el-option label="🇸🇬 新加坡 (SG)" value="SG" />
           </el-select>
         </el-form-item>
+        <el-form-item label="ID 服务器" required>
+          <el-input v-model="formData.id_server" placeholder="例如：id.example.com:21116" />
+        </el-form-item>
         <el-form-item label="中继地址" required>
           <el-input v-model="formData.relay_server" placeholder="例如：relay-bj.example.com:21117" />
         </el-form-item>
@@ -172,17 +178,29 @@
     </el-dialog>
 
     <!-- ======================================== -->
-    <!-- 统一密钥编辑对话框 -->
+    <!-- 服务器全局配置对话框 -->
     <!-- ======================================== -->
-    <el-dialog v-model="keyDialogVisible" title="编辑统一密钥" width="520px" :close-on-click-modal="false">
-      <el-form :model="keyForm" label-width="100px">
+    <el-dialog v-model="keyDialogVisible" title="服务器全局配置" width="560px" :close-on-click-modal="false">
+      <el-form :model="keyForm" label-width="120px">
+        <el-form-item label="ID 服务器">
+          <el-input v-model="keyForm.id_server" placeholder="例如：id.example.com:21116" />
+        </el-form-item>
+        <el-form-item label="中继服务器">
+          <el-input v-model="keyForm.relay_server" placeholder="例如：relay.example.com:21117" />
+        </el-form-item>
+        <el-form-item label="API 服务器">
+          <el-input v-model="keyForm.api_server" placeholder="例如：https://api.example.com" />
+        </el-form-item>
         <el-form-item label="统一密钥">
           <el-input v-model="keyForm.key" placeholder="输入密钥，留空则自动生成" />
-          <div class="key-hint">修改密钥后需重启 hbbs/hbbr 服务生效。客户端需要使用相同密钥才能连接。</div>
         </el-form-item>
         <el-form-item label="专业线路地址">
           <el-input v-model="keyForm.ws_host" placeholder="例如：wss://api.example.com" />
         </el-form-item>
+        <el-form-item label="发卡网站">
+          <el-input v-model="keyForm.card_shop_url" placeholder="例如：https://shop.example.com" />
+        </el-form-item>
+        <div class="key-hint" style="margin-left: 120px">修改配置后需重启 hbbs/hbbr 服务生效。<br/>客户端配置生成将使用此处填写的服务器信息。</div>
       </el-form>
       <template #footer>
         <el-button @click="keyDialogVisible = false">取消</el-button>
@@ -194,7 +212,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { list, create, update, remove } from '@/api/server'
+import { list, create, update, remove, checkServers } from '@/api/server'
 import { getServerConfig, updateServerKey } from '@/api/config'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -240,11 +258,11 @@ const apiAddr = computed(() => {
 })
 
 const idOnline = computed(() => {
-  // ID 服务器在线 = 至少有一个中继节点在线（说明 ID 服务器可达）
   if (listRes.list.length === 0) return null
-  // 直接检查 ID 服务器端口可达性 — 若有记录标记
-  const idServer = listRes.list.find(s => s.id_server && s.is_online !== undefined)
-  return idServer ? true : listRes.list.some(s => s.is_online)
+  // 有 id_server 的节点全部在线才算 ID 服务器在线
+  const idServers = listRes.list.filter(s => s.id_server)
+  if (idServers.length === 0) return null
+  return idServers.every(s => s.is_online)
 })
 
 const relayNodes = computed(() => {
@@ -293,17 +311,36 @@ const del = async (row) => {
 const serverKey = ref('')
 const keyDialogVisible = ref(false)
 const keySaving = ref(false)
+const rechecking = ref(false)
 const keyForm = reactive({
+  id_server: '',
+  relay_server: '',
+  api_server: '',
   key: '',
   ws_host: '',
+  card_shop_url: '',
 })
+
+const recheckAll = async () => {
+  rechecking.value = true
+  const res = await checkServers().catch(() => false)
+  rechecking.value = false
+  if (res) {
+    ElMessage.success('检测已触发，稍后刷新查看结果')
+    setTimeout(() => getList(), 3000)
+  }
+}
 
 const loadServerKey = async () => {
   const res = await getServerConfig().catch(() => false)
   if (res && res.data) {
     serverKey.value = res.data.key || ''
+    keyForm.id_server = res.data.id_server || ''
+    keyForm.relay_server = res.data.relay_server || ''
+    keyForm.api_server = res.data.api_server || ''
     keyForm.key = res.data.key || ''
     keyForm.ws_host = res.data.ws_host || ''
+    keyForm.card_shop_url = res.data.card_shop_url || ''
   }
 }
 
@@ -314,13 +351,17 @@ const showKeyDialog = () => {
 const saveKey = async () => {
   keySaving.value = true
   const res = await updateServerKey({
+    id_server: keyForm.id_server,
+    relay_server: keyForm.relay_server,
+    api_server: keyForm.api_server,
     key: keyForm.key,
     ws_host: keyForm.ws_host,
+    card_shop_url: keyForm.card_shop_url,
   }).catch(() => false)
   keySaving.value = false
   if (res) {
     serverKey.value = keyForm.key
-    ElMessage.success('密钥已更新，请重启 hbbs/hbbr 服务生效')
+    ElMessage.success('服务器配置已更新，请重启 hbbs/hbbr 服务生效')
     keyDialogVisible.value = false
   }
 }

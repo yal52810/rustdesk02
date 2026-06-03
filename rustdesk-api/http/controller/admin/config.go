@@ -68,16 +68,21 @@ func (co *Config) ServerConfig(c *gin.Context) {
 		RelayServer: global.Config.Rustdesk.RelayServer,
 		ApiServer:   global.Config.Rustdesk.ApiServer,
 		WsHost:      global.Config.Rustdesk.WsHost,
+			CardShopUrl: global.Config.Rustdesk.CardShopUrl,
 	}
 	response.Success(c, cf)
 }
 
 type updateServerKeyReq struct {
-	Key    string `json:"key" binding:"required"`
-	WsHost string `json:"ws_host"`
+	IdServer    string `json:"id_server"`
+	RelayServer string `json:"relay_server"`
+	ApiServer   string `json:"api_server"`
+	Key         string `json:"key"`
+	WsHost      string `json:"ws_host"`
+	CardShopUrl string `json:"card_shop_url"`
 }
 
-// UpdateServerKey 更新统一密钥和WSS配置
+// UpdateServerKey 更新服务器全局配置
 func (co *Config) UpdateServerKey(c *gin.Context) {
 	req := &updateServerKeyReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -90,18 +95,46 @@ func (co *Config) UpdateServerKey(c *gin.Context) {
 		return
 	}
 
-	global.Viper.Set("rustdesk.key", req.Key)
-	global.Config.Rustdesk.Key = req.Key
-	if service.Config != nil {
-		service.Config.Rustdesk.Key = req.Key
+	if req.IdServer != "" {
+		global.Viper.Set("rustdesk.id-server", req.IdServer)
+		global.Config.Rustdesk.IdServer = req.IdServer
+		if service.Config != nil {
+			service.Config.Rustdesk.IdServer = req.IdServer
+		}
 	}
-
+	if req.RelayServer != "" {
+		global.Viper.Set("rustdesk.relay-server", req.RelayServer)
+		global.Config.Rustdesk.RelayServer = req.RelayServer
+		if service.Config != nil {
+			service.Config.Rustdesk.RelayServer = req.RelayServer
+		}
+	}
+	if req.ApiServer != "" {
+		global.Viper.Set("rustdesk.api-server", req.ApiServer)
+		global.Config.Rustdesk.ApiServer = req.ApiServer
+		if service.Config != nil {
+			service.Config.Rustdesk.ApiServer = req.ApiServer
+		}
+	}
+	if req.Key != "" {
+		global.Viper.Set("rustdesk.key", req.Key)
+		global.Config.Rustdesk.Key = req.Key
+		if service.Config != nil {
+			service.Config.Rustdesk.Key = req.Key
+		}
+	}
 	if req.WsHost != "" {
 		global.Viper.Set("rustdesk.ws-host", req.WsHost)
 		global.Config.Rustdesk.WsHost = req.WsHost
 		if service.Config != nil {
 			service.Config.Rustdesk.WsHost = req.WsHost
 		}
+	}
+	// Card shop URL can be cleared (empty is valid)
+	global.Viper.Set("rustdesk.card-shop-url", req.CardShopUrl)
+	global.Config.Rustdesk.CardShopUrl = req.CardShopUrl
+	if service.Config != nil {
+		service.Config.Rustdesk.CardShopUrl = req.CardShopUrl
 	}
 
 	if err := global.Viper.WriteConfig(); err != nil {
@@ -110,8 +143,12 @@ func (co *Config) UpdateServerKey(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"key":     global.Config.Rustdesk.Key,
-		"ws_host": global.Config.Rustdesk.WsHost,
+		"id_server":     global.Config.Rustdesk.IdServer,
+		"relay_server":  global.Config.Rustdesk.RelayServer,
+		"api_server":    global.Config.Rustdesk.ApiServer,
+		"key":           global.Config.Rustdesk.Key,
+		"ws_host":       global.Config.Rustdesk.WsHost,
+		"card_shop_url": global.Config.Rustdesk.CardShopUrl,
 	})
 }
 

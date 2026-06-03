@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	apiResp "github.com/lejianwen/rustdesk-api/v2/http/response/api"
 	"github.com/lejianwen/rustdesk-api/v2/model"
@@ -79,7 +80,7 @@ func (v *Vip) Servers(c *gin.Context) {
 			Description:       server.Description,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"list": list})
+	c.JSON(http.StatusOK, gin.H{"list": list, "card_shop_url": global.Config.Rustdesk.CardShopUrl})
 }
 
 func statusText(server *model.Server) string {
@@ -269,7 +270,8 @@ func (v *Vip) ClientConfig(c *gin.Context) {
 		"api_server":   configResult.ApiServer,
 		"key":          configResult.Key,
 		"ws_host":      configResult.WsHost,
-		"config_str":   configStr,
+		"config_str":    configStr,
+		"card_shop_url": global.Config.Rustdesk.CardShopUrl,
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "config": serverInfo})

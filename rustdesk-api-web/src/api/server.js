@@ -36,3 +36,10 @@ export function remove (data) {
     data,
   })
 }
+
+export function checkServers () {
+  return request({
+    url: '/server/check',
+    method: 'post',
+  })
+}

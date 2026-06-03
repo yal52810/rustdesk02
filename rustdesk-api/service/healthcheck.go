@@ -61,7 +61,8 @@ func (s *HealthCheckService) CheckAllServers() {
 }
 
 func (s *HealthCheckService) CheckServerLine(server *model.Server) bool {
-	idOK := s.CheckTCPAddress(server.IdServer, "21116")
+	// Try port 21115 (hbbs admin) first, then 21116 (rendezvous) as fallback
+	idOK := s.CheckTCPAddress(server.IdServer, "21115") || s.CheckTCPAddress(server.IdServer, "21116")
 	relayOK := s.CheckTCPAddress(server.RelayServer, "21117")
 
 	if server.SupportWSS && server.WsHost != "" {

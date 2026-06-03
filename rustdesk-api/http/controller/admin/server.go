@@ -103,6 +103,12 @@ func (ct *Server) Update(c *gin.Context) {
 	response.Success(c, server)
 }
 
+// Check 手动触发服务器健康检测
+func (ct *Server) Check(c *gin.Context) {
+	go service.AllService.HealthCheckService.CheckAllServers()
+	response.Success(c, nil)
+}
+
 // Delete 删除服务器
 func (ct *Server) Delete(c *gin.Context) {
 	form := &admin.ServerForm{}

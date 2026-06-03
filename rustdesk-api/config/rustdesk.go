@@ -22,6 +22,7 @@ type Rustdesk struct {
 	WebclientMagicQueryonline int    `mapstructure:"webclient-magic-queryonline"`
 	WsHost                    string `mapstructure:"ws-host"`
 	ForceWSS                  bool   `mapstructure:"force-wss"`
+	CardShopUrl               string `mapstructure:"card-shop-url"`
 }
 
 func (rd *Rustdesk) LoadKeyFile() {
