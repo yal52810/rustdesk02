@@ -123,6 +123,14 @@
           </div>
           <el-empty v-else description="暂无可购买套餐" />
         </section>
+
+        <!-- Redeem Card (visible without login) -->
+        <section class="redeem-card">
+          <div class="card-title">激活码兑换</div>
+          <div class="card-desc">输入激活码开通套餐（需先登录或注册账号）</div>
+          <el-input v-model="redeemForm.code" placeholder="请输入激活码" size="large" @keyup.enter="submitRedeemGuest" />
+          <el-button type="primary" class="action-btn" @click="submitRedeemGuest" :loading="redeemLoading" style="margin-top:12px">立即激活</el-button>
+        </section>
       </div>
 
       <!-- ======================================== -->
@@ -517,6 +525,10 @@ const submitReset = async () => {
   switchAuthTab('login')
 }
 
+const submitRedeemGuest = async () => {
+  if (!isLoggedIn.value) { ElMessage.warning('请先登录或注册账号后再激活'); switchAuthTab('login'); return }
+  await submitRedeem()
+}
 const submitRedeem = async () => {
   if (!redeemForm.code) { ElMessage.error('请输入激活码'); return }
   redeemLoading.value = true
