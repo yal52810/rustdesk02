@@ -86,7 +86,13 @@
             </template>
           </el-table-column>
           <el-table-column v-if="c.name==='last_online_ip'" prop="last_online_ip" :label="T('LastOnlineIp')" align="center" min-width="120"/>
-          <el-table-column v-if="c.name==='username'" prop="username" :label="T('Username')" align="center" width="120"/>
+          <el-table-column v-if="c.name==='account'" label="所属账号" align="center" width="120">
+            <template #default="{ row }">
+              <el-tag v-if="row.user" type="primary" size="small">{{ row.user.username }}</el-tag>
+              <span v-else style="color:#909399">未绑定</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="c.name==='username'" prop="username" label="系统用户名" align="center" width="120"/>
           <el-table-column v-if="c.name==='group_id'" prop="group_id" :label="T('Group')" align="center" width="120">
             <template #default="{row}">
               <span v-if="row.group_id"> <el-tag>{{ groupListRes.list?.find(g => g.id === row.group_id)?.name }} </el-tag> </span>
@@ -534,6 +540,7 @@
     { name: 'os', visible: true, label: 'Os' },
     { name: 'last_online_time', visible: true, label: 'LastOnlineTime' },
     { name: 'last_online_ip', visible: true, label: 'LastOnlineIp' },
+    { name: 'account', visible: true, label: 'Account' },
     { name: 'username', visible: true, label: 'Username' },
     { name: 'group_id', visible: true, label: 'Group' },
     { name: 'uuid', visible: true, label: 'Uuid' },

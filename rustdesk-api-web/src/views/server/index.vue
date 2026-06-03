@@ -82,11 +82,12 @@
       <el-table :data="listRes.list" v-loading="listRes.loading" border stripe>
         <el-table-column prop="name" label="节点名称" min-width="140" />
         <el-table-column prop="region" label="地区" width="100" align="center" />
-        <el-table-column label="类型" width="120" align="center">
+        <el-table-column label="线路类型" width="140" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.support_wss ? 'success' : ''" size="small">
-              {{ row.support_wss ? '专业线路' : 'TCP 标准线路' }}
-            </el-tag>
+            <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+              <el-tag type="" size="small">TCP 标准</el-tag>
+              <el-tag v-if="row.support_wss" type="success" size="small">WSS 专业</el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="relay_server" label="中继地址" min-width="200" />
@@ -171,11 +172,15 @@
           <el-input v-model="formData.ws_host" placeholder="专业线路填写，例如：relay-bj.example.com:21119" />
         </el-form-item>
         <el-divider content-position="left" style="margin: 8px 0">高级选项</el-divider>
-        <el-form-item label="连接类型">
-          <el-radio-group v-model="formData.support_wss">
-            <el-radio :value="false">TCP 标准线路</el-radio>
-            <el-radio :value="true">专业线路</el-radio>
-          </el-radio-group>
+        <el-form-item label="线路能力">
+          <div style="display:flex;align-items:center;gap:12px">
+            <el-tag type="" size="default">TCP 标准线路</el-tag>
+            <span style="color:#909399;font-size:12px">（默认开启）</span>
+          </div>
+        </el-form-item>
+        <el-form-item label="WSS 专业线路">
+          <el-switch v-model="formData.support_wss" active-text="启用" inactive-text="未启用" />
+          <div style="font-size:12px;color:#909399;margin-top:4px">在 TCP 基础上额外支持 WebSocket 加密线路，需填写上方「专业线路地址」</div>
         </el-form-item>
         <el-form-item label="启用节点">
           <el-switch v-model="formData.is_active" active-text="启用" inactive-text="停用" />

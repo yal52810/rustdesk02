@@ -41,8 +41,9 @@ func (p *Peer) SysInfo(c *gin.Context) {
 			return
 		}
 	} else {
-		if pe.UserId == 0 {
-			pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
+		latestUserId := service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
+		if latestUserId > 0 {
+			pe.UserId = latestUserId
 		}
 		fpe.RowId = pe.RowId
 		fpe.UserId = pe.UserId
