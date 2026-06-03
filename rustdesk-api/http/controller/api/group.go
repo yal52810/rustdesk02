@@ -35,15 +35,10 @@ func (g *Group) Users(c *gin.Context) {
 		return
 	}
 	u := service.AllService.UserService.CurUser(c)
-	gr := service.AllService.GroupService.InfoById(u.GroupId)
 	userList := &model.UserList{}
-	if !*u.IsAdmin && gr.Type != model.GroupTypeShare {
-		//仅能获取到自己
-		userList.Users = append(userList.Users, u)
-		userList.Total = 1
-	} else {
-		userList = service.AllService.UserService.ListByGroupId(u.GroupId, q.Page, q.PageSize)
-	}
+	// 只显示当前用户自己的设备
+	userList.Users = append(userList.Users, u)
+	userList.Total = 1
 
 	data := make([]*apiResp.UserPayload, 0, len(userList.Users))
 	for _, user := range userList.Users {
@@ -79,14 +74,9 @@ func (g *Group) Peers(c *gin.Context) {
 		response.Error(c, err.Error())
 		return
 	}
-	gr := service.AllService.GroupService.InfoById(u.GroupId)
 	users := make([]*model.User, 0, 1)
-	if !*u.IsAdmin && gr.Type != model.GroupTypeShare {
-		//仅能获取到自己
-		users = append(users, u)
-	} else {
-		users = service.AllService.UserService.ListIdAndNameByGroupId(u.GroupId)
-	}
+	// 只显示当前用户自己的设备
+	users = append(users, u)
 
 	namesById := make(map[uint]string, len(users))
 	userIds := make([]uint, 0, len(users))
