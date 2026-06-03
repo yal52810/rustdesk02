@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 )
 
 type Config struct {
