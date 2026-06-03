@@ -1,10 +1,10 @@
 <template>
   <div>
     <!-- ======================================== -->
-    <!-- ID 服务器 + 全局在线状态 + 统一密钥 -->
+    <!-- 状态卡片行 -->
     <!-- ======================================== -->
     <el-row :gutter="16" style="margin-bottom: 16px">
-      <el-col :span="6">
+      <el-col :span="5">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <span class="status-dot" :class="idOnline ? 'online' : 'offline'"></span>
@@ -18,7 +18,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="5">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <div>
@@ -29,7 +29,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="5">
         <el-card shadow="hover" class="status-card">
           <div class="status-row">
             <div>
@@ -42,18 +42,25 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="5">
         <el-card shadow="hover" class="status-card key-card">
           <div class="status-row key-row">
             <div style="flex:1;min-width:0">
               <div class="status-title">全局配置</div>
               <div class="status-addr mono-key">{{ globalServerConfig.key || '密钥未配置' }}</div>
-              <div style="font-size:11px;color:#909399;margin-top:2px">
-                <span v-if="globalServerConfig.card_shop_url">发卡网已设置</span>
-                <span v-else>发卡网未设置</span>
-              </div>
             </div>
             <el-button text size="small" @click="showKeyDialog" type="primary">编辑</el-button>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="4">
+        <el-card shadow="hover" class="status-card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="status-title">发卡网设置</div>
+            <el-button text size="small" type="primary" @click="showCardShop">设置</el-button>
+          </div>
+          <div style="font-size:12px;color:#909399;margin-top:4px">
+            {{ globalServerConfig.card_shop_url ? '已配置' : '未配置' }}
           </div>
         </el-card>
       </el-col>
@@ -67,7 +74,6 @@
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span><b>中继节点管理</b></span>
           <div style="display:flex;gap:8px">
-            <el-button size="small" @click="recheckAll" :loading="rechecking">检测在线状态</el-button>
             <el-button type="primary" size="small" @click="toAdd">+ 添加节点</el-button>
           </div>
         </div>
@@ -84,14 +90,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="relay_server" label="中继地址" min-width="200" />
-        <el-table-column label="在线状态" width="110" align="center">
+        <el-table-column label="在线状态" width="120" align="center">
           <template #default="{ row }">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 6px">
-              <span class="status-dot" :class="row.is_online ? 'online' : 'offline'"></span>
-              <el-tag :type="row.is_online ? 'success' : 'danger'" size="small" effect="dark">
-                {{ row.is_online ? '在线' : '离线' }}
-              </el-tag>
-            </div>
+            <el-switch
+              :model-value="row.is_online"
+              :active-value="true"
+              :inactive-value="false"
+              active-text="在线"
+              inactive-text="离线"
+              @change="(val) => handleToggleOnline(row, val)"
+            />
           </template>
         </el-table-column>
         <el-table-column prop="last_check_at" label="最近检测" width="160" align="center">
@@ -182,6 +190,22 @@
     </el-dialog>
 
     <!-- ======================================== -->
+    <!-- 发卡网设置对话框 -->
+    <!-- ======================================== -->
+    <el-dialog v-model="cardShopVisible" title="发卡网设置" width="460px" :close-on-click-modal="false">
+      <el-form label-width="80px">
+        <el-form-item label="发卡网址">
+          <el-input v-model="cardShopForm.url" placeholder="例如：https://shop.example.com" />
+        </el-form-item>
+        <div class="key-hint">设置后在用户中心"购买套餐"处显示"前往发卡网购买"按钮。</div>
+      </el-form>
+      <template #footer>
+        <el-button @click="cardShopVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveCardShop" :loading="cardShopSaving">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ======================================== -->
     <!-- 服务器全局配置对话框 -->
     <!-- ======================================== -->
     <el-dialog v-model="keyDialogVisible" title="服务器全局配置" width="560px" :close-on-click-modal="false">
@@ -201,9 +225,6 @@
         <el-form-item label="专业线路地址">
           <el-input v-model="keyForm.ws_host" placeholder="例如：wss://api.example.com" />
         </el-form-item>
-        <el-form-item label="发卡网站">
-          <el-input v-model="keyForm.card_shop_url" placeholder="例如：https://shop.example.com" />
-        </el-form-item>
         <div class="key-hint" style="margin-left: 120px">修改配置后需重启 hbbs/hbbr 服务生效。<br/>客户端配置生成将使用此处填写的服务器信息。</div>
       </el-form>
       <template #footer>
@@ -216,7 +237,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { list, create, update, remove, checkServers } from '@/api/server'
+import { list, create, update, remove, checkServers, toggleOnline } from '@/api/server'
 import { getServerConfig, updateServerKey } from '@/api/config'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -324,6 +345,9 @@ const serverKey = ref('')
 const keyDialogVisible = ref(false)
 const keySaving = ref(false)
 const rechecking = ref(false)
+const cardShopVisible = ref(false)
+const cardShopSaving = ref(false)
+const cardShopForm = reactive({ url: '' })
 const keyForm = reactive({
   id_server: '',
   relay_server: '',
@@ -340,6 +364,37 @@ const recheckAll = async () => {
   if (res) {
     ElMessage.success('检测已触发，稍后刷新查看结果')
     setTimeout(() => getList(), 3000)
+  }
+}
+
+const handleToggleOnline = async (row, val) => {
+  const res = await toggleOnline({ id: row.id, is_online: val }).catch(() => false)
+  if (res) {
+    row.is_online = val
+    ElMessage.success(`节点「${row.name}」已设为${val ? '在线' : '离线'}`)
+  }
+}
+
+const showCardShop = () => {
+  cardShopForm.url = globalServerConfig.value.card_shop_url || ''
+  cardShopVisible.value = true
+}
+
+const saveCardShop = async () => {
+  cardShopSaving.value = true
+  const res = await updateServerKey({
+    id_server: globalServerConfig.value.id_server,
+    relay_server: globalServerConfig.value.relay_server,
+    api_server: globalServerConfig.value.api_server,
+    key: globalServerConfig.value.key,
+    ws_host: globalServerConfig.value.ws_host,
+    card_shop_url: cardShopForm.url,
+  }).catch(() => false)
+  cardShopSaving.value = false
+  if (res) {
+    globalServerConfig.value.card_shop_url = cardShopForm.url
+    ElMessage.success('发卡网地址已保存')
+    cardShopVisible.value = false
   }
 }
 

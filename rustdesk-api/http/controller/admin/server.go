@@ -109,6 +109,20 @@ func (ct *Server) Check(c *gin.Context) {
 	response.Success(c, nil)
 }
 
+// ToggleOnline 管理员手动设置服务器在线状态
+func (ct *Server) ToggleOnline(c *gin.Context) {
+	form := &admin.ServerForm{}
+	if err := c.ShouldBindJSON(form); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+	if err := service.AllService.ServerService.UpdateOnlineStatus(form.Id, form.IsOnline); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+	response.Success(c, nil)
+}
+
 // Delete 删除服务器
 func (ct *Server) Delete(c *gin.Context) {
 	form := &admin.ServerForm{}

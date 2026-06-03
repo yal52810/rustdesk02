@@ -43,3 +43,11 @@ export function checkServers () {
     method: 'post',
   })
 }
+
+export function toggleOnline (data) {
+  return request({
+    url: '/server/toggle-online',
+    method: 'post',
+    data,
+  })
+}

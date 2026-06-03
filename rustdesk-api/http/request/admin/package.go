@@ -30,6 +30,7 @@ type ServerForm struct {
 	CostWeight    int    `json:"cost_weight"`
 	IsDefault     bool   `json:"is_default"`
 	IsActive      bool   `json:"is_active"`
+	IsOnline      bool   `json:"is_online"`
 	Priority      int    `json:"priority"`
 	Description   string `json:"description"`
 }
