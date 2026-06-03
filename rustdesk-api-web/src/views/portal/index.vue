@@ -718,8 +718,8 @@ onBeforeUnmount(() => { if (codeTimer) { clearInterval(codeTimer); codeTimer = n
 .portal-form { margin-top: 8px; }
 .action-btn { width: 100%; min-height: 44px; border-radius: 14px; font-weight: 600; }
 .inline-field { display: grid; grid-template-columns: 1fr 128px; gap: 12px; width: 100%; }
-.captcha-field { display: grid; grid-template-columns: 1fr 120px; gap: 12px; width: 100%; }
-.captcha-image { width: 120px; height: 44px; border-radius: 14px; object-fit: cover; cursor: pointer; border: 1px solid rgba(58, 121, 255, 0.14); }
+.captcha-field { display: grid; grid-template-columns: 1fr 160px; gap: 12px; width: 100%; }
+.captcha-image { width: 160px; height: 54px; border-radius: 14px; object-fit: cover; cursor: pointer; border: 1px solid rgba(58, 121, 255, 0.14); }
 
 // Summary
 .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
