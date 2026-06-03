@@ -70,9 +70,6 @@
             <el-form-item label="用户名">
               <el-input v-model="registerForm.username" placeholder="2-18 位账号" />
             </el-form-item>
-            <el-form-item label="邮箱">
-              <el-input v-model="registerForm.email" placeholder="可选，用于找回密码和接收通知" />
-            </el-form-item>
             <el-form-item label="密码">
               <el-input v-model="registerForm.password" type="password" show-password placeholder="6-18 位密码" />
             </el-form-item>
@@ -356,7 +353,7 @@ const authTabs = [
 ]
 
 const loginForm = reactive({ username: '', password: '', platform: 'web', captcha: '', captcha_id: '' })
-const registerForm = reactive({ username: '', email: '', password: '', confirmPassword: '', activation_code: '' })
+const registerForm = reactive({ username: '', password: '', confirmPassword: '', activation_code: '' })
 const resetForm = reactive({ email: '', code: '', newPassword: '' })
 const redeemForm = reactive({ code: '' })
 const changePwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
@@ -370,7 +367,7 @@ const selectedServerId = ref(null)
 const codeCountdown = ref(0)
 const resetLoading = ref(false)
 const captchaCode = ref(null)
-const allowRegister = ref(false)
+const allowRegister = ref(true)
 const authLoading = ref(false)
 const redeemLoading = ref(false)
 const changingPwd = ref(false)
