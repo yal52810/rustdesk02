@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -138,8 +139,7 @@ func (co *Config) UpdateServerKey(c *gin.Context) {
 	}
 
 	if err := global.Viper.WriteConfig(); err != nil {
-		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
-		return
+		service.Logger.Warn("failed to persist config to file (may be read-only fs): ", err)
 	}
 
 	response.Success(c, gin.H{
@@ -329,5 +329,8 @@ func persistMailConfig(mailCfg config.Mail) error {
 	global.Viper.Set("mail.use-ssl", mailCfg.UseSSL)
 	global.Viper.Set("mail.skip-verify", mailCfg.SkipVerify)
 
-	return global.Viper.WriteConfig()
+	if err := global.Viper.WriteConfig(); err != nil {
+		service.Logger.Warn("failed to persist mail config to file (may be read-only fs): ", err)
+	}
+	return nil
 }

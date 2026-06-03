@@ -1,10 +1,12 @@
 package router
 
 import (
+	"net/http"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/controller/web"
-	"net/http"
 )
 
 func WebInit(g *gin.Engine) {
@@ -13,11 +15,14 @@ func WebInit(g *gin.Engine) {
 
 	if global.Config.App.WebClient == 1 {
 		g.GET("/webclient-config/index.js", i.ConfigJs)
-	}
-
-	if global.Config.App.WebClient == 1 {
 		g.StaticFS("/webclient", http.Dir(global.Config.Gin.ResourcesPath+"/web"))
-		g.StaticFS("/webclient2", http.Dir(global.Config.Gin.ResourcesPath+"/web2"))
+		// v2 客户端不存在时回退到 v1
+		web2Path := global.Config.Gin.ResourcesPath + "/web2"
+		if _, err := os.Stat(web2Path); err == nil {
+			g.StaticFS("/webclient2", http.Dir(web2Path))
+		} else {
+			g.StaticFS("/webclient2", http.Dir(global.Config.Gin.ResourcesPath+"/web"))
+		}
 	}
 	g.StaticFS("/_admin", http.Dir(global.Config.Gin.ResourcesPath+"/admin"))
 }

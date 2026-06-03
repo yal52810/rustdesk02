@@ -168,8 +168,9 @@
         <el-form-item label="中继地址" required>
           <el-input v-model="formData.relay_server" placeholder="例如：relay-bj.example.com:21117" />
         </el-form-item>
-        <el-form-item label="专业线路地址">
-          <el-input v-model="formData.ws_host" placeholder="专业线路填写，例如：relay-bj.example.com:21119" />
+        <el-form-item label="专业线路地址" :required="formData.support_wss">
+          <el-input v-model="formData.ws_host" placeholder="例如：relay-bj.example.com:21119" />
+          <div style="font-size:12px;color:#909399;margin-top:2px">开启下方 WSS 专业线路后必须填写，用于 WebSocket 加密传输</div>
         </el-form-item>
         <el-divider content-position="left" style="margin: 8px 0">高级选项</el-divider>
         <el-form-item label="线路能力">
@@ -266,7 +267,6 @@ const defaultFormData = () => ({
   key: '',
   api_server: window.location.origin,
   ws_host: '',
-  support_tcp: true,
   support_wss: false,
   cost_weight: 1,
   is_default: false,
@@ -465,7 +465,7 @@ const assignFormData = (row = defaultFormData()) => {
     region: row.region || '',
     relay_server: row.relay_server || '',
     ws_host: row.ws_host || '',
-    support_wss: row.support_wss ?? false,
+    support_wss: row.support_wss ?? (!!row.ws_host),
     is_active: row.is_active ?? true,
     id_server: row.id_server || idAddr.value,
     api_server: row.api_server || window.location.origin,
@@ -488,6 +488,7 @@ const submit = async () => {
   if (!formData.name.trim()) return ElMessage.warning('请输入节点名称')
   if (!formData.region.trim()) return ElMessage.warning('请选择地区')
   if (!formData.relay_server.trim()) return ElMessage.warning('请输入中继地址')
+  if (formData.support_wss && !formData.ws_host.trim()) return ElMessage.warning('启用 WSS 专业线路时必须填写专业线路地址')
 
   submitting.value = true
   const api = formData.id ? update : create

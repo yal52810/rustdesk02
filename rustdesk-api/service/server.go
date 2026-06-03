@@ -6,6 +6,7 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
+	"time"
 )
 
 // ServerTopologyEntry 服务器拓扑条目（供 Rust hbbs 读取）
@@ -60,7 +61,25 @@ func (s *ServerService) Create(server *model.Server) error {
 
 // Update 更新服务器
 func (s *ServerService) Update(server *model.Server) error {
-	err := s.db.Save(server).Error
+	// 使用 Updates + map 避免零值覆盖，SupportTCP 始终为 true
+	updates := map[string]interface{}{
+		"name":           server.Name,
+		"region":         server.Region,
+		"id_server":      server.IdServer,
+		"relay_server":   server.RelayServer,
+		"key":            server.Key,
+		"api_server":     server.ApiServer,
+		"ws_host":        server.WsHost,
+		"topology_group": server.TopologyGroup,
+		"support_tcp":    true,
+		"support_wss":    server.SupportWSS,
+		"cost_weight":    server.CostWeight,
+		"is_default":     server.IsDefault,
+		"is_active":      server.IsActive,
+		"priority":       server.Priority,
+		"description":    server.Description,
+	}
+	err := s.db.Model(&model.Server{}).Where("id = ?", server.Id).Updates(updates).Error
 	if err == nil {
 		s.PublishServerTopologyToRedis()
 	}
@@ -122,7 +141,7 @@ func (s *ServerService) GetRelayServerEntries() []RelayServerEntry {
 func (s *ServerService) UpdateOnlineStatus(id uint, isOnline bool) error {
 	err := s.db.Model(&model.Server{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"is_online":     isOnline,
-		"last_check_at": gorm.Expr("NOW()"),
+		"last_check_at": time.Now(),
 	}).Error
 	if err == nil {
 		s.PublishServerTopologyToRedis()

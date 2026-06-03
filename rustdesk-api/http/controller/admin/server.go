@@ -42,6 +42,12 @@ func (ct *Server) Create(c *gin.Context) {
 		return
 	}
 
+	// WSS 启用时必须填写 ws_host
+	if form.SupportWSS && form.WsHost == "" {
+		response.Fail(c, 101, "启用 WSS 专业线路时必须填写专业线路地址")
+		return
+	}
+
 	server := &model.Server{
 		Name:          form.Name,
 		Region:        form.Region,
@@ -51,7 +57,7 @@ func (ct *Server) Create(c *gin.Context) {
 		ApiServer:     form.ApiServer,
 		WsHost:        form.WsHost,
 		TopologyGroup: form.TopologyGroup,
-		SupportTCP:    form.SupportTCP,
+		SupportTCP:    true, // TCP 标配，始终开启
 		SupportWSS:    form.SupportWSS,
 		CostWeight:    form.CostWeight,
 		IsDefault:     form.IsDefault,
@@ -76,6 +82,12 @@ func (ct *Server) Update(c *gin.Context) {
 		return
 	}
 
+	// WSS 启用时必须填写 ws_host
+	if form.SupportWSS && form.WsHost == "" {
+		response.Fail(c, 101, "启用 WSS 专业线路时必须填写专业线路地址")
+		return
+	}
+
 	server := &model.Server{
 		IdModel:       model.IdModel{Id: form.Id},
 		Name:          form.Name,
@@ -86,7 +98,7 @@ func (ct *Server) Update(c *gin.Context) {
 		ApiServer:     form.ApiServer,
 		WsHost:        form.WsHost,
 		TopologyGroup: form.TopologyGroup,
-		SupportTCP:    form.SupportTCP,
+		SupportTCP:    true, // TCP 标配，始终开启
 		SupportWSS:    form.SupportWSS,
 		CostWeight:    form.CostWeight,
 		IsDefault:     form.IsDefault,

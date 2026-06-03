@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -53,15 +55,21 @@ func (v *Vip) Servers(c *gin.Context) {
 		response.Error(c, response.TranslateMsg(c, "SystemError")+err.Error())
 		return
 	}
+	// 全局默认配置，用于 key 等字段的回退
+	defaultCfg := service.AllService.ServerConfigService.GetServerConfigSmart(nil, "", false)
 	list := make([]serverLinePayload, 0, len(servers))
 	for _, server := range servers {
+		key := server.Key
+		if key == "" && defaultCfg != nil {
+			key = defaultCfg.Key
+		}
 		list = append(list, serverLinePayload{
 			ID:                server.Id,
 			Name:              server.Name,
 			Region:            server.Region,
 			IDServer:          server.IdServer,
 			RelayServer:       server.RelayServer,
-			Key:               server.Key,
+			Key:               key,
 			APIServer:         server.ApiServer,
 			WSHost:            server.WsHost,
 			TopologyGroup:     server.TopologyGroup,
@@ -235,6 +243,29 @@ func (v *Vip) Packages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"list": packages})
 }
 
+// encodeConfigString 生成 RustDesk 客户端可识别的配置字符串
+// 格式与 Flutter 客户端 ServerConfig.encode() 一致：
+//
+//	JSON → base64url → 反转字符串
+func encodeConfigString(idServer, relayServer, apiServer, key string) string {
+	cfg := map[string]string{
+		"host":  idServer,
+		"relay": relayServer,
+		"api":   apiServer,
+		"key":   key,
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return ""
+	}
+	encoded := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(data)
+	runes := []rune(encoded)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
 // ClientConfig returns the client configuration string for the current user
 // @Tags VIP
 // @Summary 生成客户端配置
@@ -253,23 +284,19 @@ func (v *Vip) ClientConfig(c *gin.Context) {
 
 	configResult := service.AllService.ServerConfigService.GetServerConfigSmart(user, "", false)
 
-	configStr := ""
-	if configResult.IdServer != "" {
-		configStr = configResult.IdServer + "\n" + configResult.RelayServer
-	}
-	if configResult.ApiServer != "" {
-		configStr += "\n" + configResult.ApiServer
-	}
-	if configResult.Key != "" {
-		configStr += "\n" + configResult.Key
-	}
+	configStr := encodeConfigString(
+		configResult.IdServer,
+		configResult.RelayServer,
+		configResult.ApiServer,
+		configResult.Key,
+	)
 
 	serverInfo := gin.H{
-		"id_server":    configResult.IdServer,
-		"relay_server": configResult.RelayServer,
-		"api_server":   configResult.ApiServer,
-		"key":          configResult.Key,
-		"ws_host":      configResult.WsHost,
+		"id_server":     configResult.IdServer,
+		"relay_server":  configResult.RelayServer,
+		"api_server":    configResult.ApiServer,
+		"key":           configResult.Key,
+		"ws_host":       configResult.WsHost,
 		"config_str":    configStr,
 		"card_shop_url": global.Config.Rustdesk.CardShopUrl,
 	}
