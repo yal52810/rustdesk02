@@ -281,7 +281,7 @@
 
               <el-divider>一键配置</el-divider>
               <div class="client-config-section">
-                <div class="config-hint">点击"生成配置"后复制字符串，在客户端 <b>设置 → 网络 → 导入配置</b> 中粘贴即可。</div>
+                <div class="config-hint">点击"生成配置"后复制字符串，在客户端 <b>设置 → 网络 → ID/中继服务器 → 导入配置</b> 中粘贴即可。</div>
                 <div class="config-textarea-wrap" v-if="clientConfigStr">
                   <el-input v-model="clientConfigStr" type="textarea" :rows="3" readonly resize="none"
                     class="config-textarea" />
