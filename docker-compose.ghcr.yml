@@ -61,6 +61,8 @@ services:
       - web_logs:/app/runtime/logs
       - ./rustdesk-api/conf:/app/conf
       - id_data:/data:ro  # 共享 hbbs 生成的密钥 (id_ed25519.pub)
+    ports:
+      - "127.0.0.1:21114:21114"
     networks:
       - rustdesk-network
     depends_on:
