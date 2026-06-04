@@ -476,7 +476,7 @@ const submitLogin = async () => {
   ElMessage.success('登录成功')
   await loadUserInfo()
   if (isAdmin.value) { router.replace('/user/index'); return }
-  router.replace(route.query.redirect || '/portal')
+  router.replace('/portal')
 }
 
 const submitRegister = async () => {
