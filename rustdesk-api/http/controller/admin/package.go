@@ -46,6 +46,7 @@ func (ct *Package) Create(c *gin.Context) {
 		Description:         form.Description,
 		Price:               form.Price,
 		IsActive:            form.IsActive,
+		IsDefaultNewUser:    form.IsDefaultNewUser,
 		Priority:            form.Priority,
 	}
 
@@ -73,6 +74,7 @@ func (ct *Package) Update(c *gin.Context) {
 		Description:         form.Description,
 		Price:               form.Price,
 		IsActive:            form.IsActive,
+		IsDefaultNewUser:    form.IsDefaultNewUser,
 		Priority:            form.Priority,
 	}
 

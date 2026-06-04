@@ -27,6 +27,13 @@ func (s *PackageService) List(page, pageSize uint, where func(tx *gorm.DB)) (res
 // Create 创建套餐
 func (s *PackageService) Create(pkg *model.Package, serverIds []uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 如果设置为新用户默认套餐，先清除旧的默认标记
+		if pkg.IsDefaultNewUser {
+			if err := tx.Model(&model.Package{}).Where("is_default_new_user = ?", true).
+				Update("is_default_new_user", false).Error; err != nil {
+				return err
+			}
+		}
 		// 创建套餐
 		if err := tx.Create(pkg).Error; err != nil {
 			return err
@@ -48,6 +55,13 @@ func (s *PackageService) Create(pkg *model.Package, serverIds []uint) error {
 // Update 更新套餐
 func (s *PackageService) Update(pkg *model.Package, serverIds []uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 如果设置为新用户默认套餐，先清除旧的默认标记
+		if pkg.IsDefaultNewUser {
+			if err := tx.Model(&model.Package{}).Where("is_default_new_user = ? AND id != ?", true, pkg.Id).
+				Update("is_default_new_user", false).Error; err != nil {
+				return err
+			}
+		}
 		// 更新套餐基本信息
 		if err := tx.Model(pkg).Updates(pkg).Error; err != nil {
 			return err
@@ -99,6 +113,23 @@ func (s *PackageService) GetActivePackages() ([]*model.Package, error) {
 	var packages []*model.Package
 	err := s.db.Where("is_active = ?", true).Preload("Servers").Order("priority DESC, id ASC").Find(&packages).Error
 	return packages, err
+}
+
+// GetDefaultNewUserPackage 获取新用户注册默认套餐
+func (s *PackageService) GetDefaultNewUserPackage() (*model.Package, error) {
+	var pkg model.Package
+	err := s.db.Where("is_default_new_user = ? AND is_active = ?", true, true).
+		Preload("Servers").First(&pkg).Error
+	if err != nil {
+		return nil, err
+	}
+	return &pkg, nil
+}
+
+// ClearDefaultNewUserFlag 清除所有套餐的新用户默认标记
+func (s *PackageService) ClearDefaultNewUserFlag() error {
+	return s.db.Model(&model.Package{}).Where("is_default_new_user = ?", true).
+		Update("is_default_new_user", false).Error
 }
 
 // GetPackageServers 获取套餐的服务器列表

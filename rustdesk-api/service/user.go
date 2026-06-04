@@ -186,9 +186,9 @@ func (us *UserService) CheckUserEnable(u *model.User) bool {
 		return true
 	}
 
-	// Newly registered accounts without an active package should still be able to log in.
+	// 未开通套餐且未绑定激活码的用户按到期处理
 	if u.ValidDays <= 0 {
-		return true
+		return false
 	}
 
 	// If not activated yet, allow (first_login_at is nil)
@@ -246,6 +246,34 @@ func (us *UserService) applyUnprovisionedDefaults(user *model.User) {
 		"backup_server_id":  nil,
 		"relay_server_id":   nil,
 	})
+}
+
+// applyDefaultNewUserPackage 为新注册用户绑定管理端设置的新用户默认套餐
+func (us *UserService) applyDefaultNewUserPackage(user *model.User) bool {
+	if user == nil || user.Id == 0 {
+		return false
+	}
+	pkg, err := AllService.PackageService.GetDefaultNewUserPackage()
+	if err != nil || pkg == nil {
+		return false
+	}
+	updates := map[string]interface{}{
+		"valid_days":  pkg.ValidDays,
+		"package_id":  pkg.Id,
+		"device_limit": pkg.DeviceLimit,
+	}
+	if len(pkg.Servers) > 0 {
+		for _, srv := range pkg.Servers {
+			if srv.IsOnline && updates["primary_server_id"] == nil {
+				updates["primary_server_id"] = srv.Id
+			}
+		}
+	}
+	user.ValidDays = pkg.ValidDays
+	user.PackageId = &pkg.Id
+	user.DeviceLimit = pkg.DeviceLimit
+	DB.Model(user).Updates(updates)
+	return true
 }
 
 // BatchCreate 批量创建用户
@@ -545,7 +573,10 @@ func (us *UserService) Register(username string, email string, password string, 
 	if err != nil {
 		return nil
 	}
-	us.applyUnprovisionedDefaults(u)
+	// 尝试应用新用户默认套餐
+	if !us.applyDefaultNewUserPackage(u) {
+		us.applyUnprovisionedDefaults(u)
+	}
 	return us.InfoById(u.Id)
 }
 

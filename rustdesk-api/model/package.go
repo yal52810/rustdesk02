@@ -10,6 +10,7 @@ type Package struct {
 	Description         string    `json:"description" gorm:"type:text;comment:套餐描述"`
 	Price               float64   `json:"price" gorm:"default:0;comment:价格"`
 	IsActive            bool      `json:"is_active" gorm:"default:true;comment:是否启用"`
+	IsDefaultNewUser    bool      `json:"is_default_new_user" gorm:"default:false;comment:新用户注册默认套餐"`
 	Priority            int       `json:"priority" gorm:"default:0;comment:优先级"`
 	Servers             []*Server `json:"servers" gorm:"many2many:package_servers;"`
 	TimeModel

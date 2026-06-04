@@ -10,6 +10,7 @@ type PackageForm struct {
 	Description         string  `json:"description"`
 	Price               float64 `json:"price"`
 	IsActive            bool    `json:"is_active"`
+	IsDefaultNewUser    bool    `json:"is_default_new_user"`
 	Priority            int     `json:"priority"`
 	ServerIds           []uint  `json:"server_ids"`
 }

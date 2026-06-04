@@ -47,6 +47,12 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="is_default_new_user" label="新用户" align="center" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="row.is_default_new_user" type="warning" size="small">默认</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="priority" label="优先级" align="center" width="100" />
         <el-table-column :label="T('Actions')" align="center" width="200" fixed="right">
           <template #default="{ row }">
@@ -90,6 +96,10 @@
         </el-form-item>
         <el-form-item label="启用" prop="is_active">
           <el-switch v-model="formData.is_active" />
+        </el-form-item>
+        <el-form-item label="新用户默认套餐" prop="is_default_new_user">
+          <el-switch v-model="formData.is_default_new_user" />
+          <span style="color:#909399;margin-left:8px;font-size:12px">新用户注册时自动绑定此套餐（仅一套生效）</span>
         </el-form-item>
         <el-form-item label="可用线路" prop="server_ids">
           <el-select v-model="formData.server_ids" multiple placeholder="选择该套餐可使用的线路" style="width: 100%">
@@ -142,6 +152,7 @@ const defaultFormData = () => ({
   price: 0,
   priority: 0,
   is_active: true,
+  is_default_new_user: false,
   server_ids: [],
   description: '',
 })
@@ -219,6 +230,7 @@ const toEdit = (row) => {
     price: row.price,
     priority: row.priority,
     is_active: row.is_active,
+    is_default_new_user: row.is_default_new_user || false,
     server_ids: row.servers?.map((server) => server.id) || [],
     description: row.description,
   })
