@@ -41,8 +41,6 @@ services:
     image: ghcr.io/yal52810-lgtm/rustdesk-supervise-web:latest
     container_name: rustdesk-web
     restart: always
-    # 临时绕过 entrypoint.sh (已修复，等GitHub Actions重建后可移除)
-    entrypoint: ["/usr/local/bin/apimain"]
     environment:
       - RUSTDESK_API_GIN_RESOURCES_PATH=/app/resources
       - TZ=Asia/Shanghai

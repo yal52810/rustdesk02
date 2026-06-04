@@ -305,6 +305,7 @@ func needsSchemaMigration(db *gorm.DB) bool {
 		},
 		&model.Package{}: {
 			"file_transfer_limit_mb",
+			"is_default_new_user",
 		},
 		&model.ActivationCode{}: {
 			"package_id",
