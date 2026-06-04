@@ -14,7 +14,7 @@ services:
   # ID 服务器 (hbbs) - 端口 21116/21118
   # ========================================
   hbbs:
-    image: ghcr.io/yal52810/rustdesk-supervise-id:latest
+    image: ghcr.io/yal52810-lgtm/rustdesk-supervise-id:latest
     container_name: rustdesk-hbbs
     restart: always
     command: hbbs -k ${ID_KEY:-_} -r ${DOMAIN:-api.seset.xyz}:21117
@@ -38,7 +38,7 @@ services:
   # Web 管理后台 (API + Vue前端) - 端口 21114
   # ========================================
   web:
-    image: ghcr.io/yal52810/rustdesk-supervise-web:latest
+    image: ghcr.io/yal52810-lgtm/rustdesk-supervise-web:latest
     container_name: rustdesk-web
     restart: always
     # 临时绕过 entrypoint.sh (已修复，等GitHub Actions重建后可移除)
@@ -78,7 +78,7 @@ services:
   # 中继服务器 (hbbr) - 端口 21117/21119
   # ========================================
   relay:
-    image: ghcr.io/yal52810/rustdesk-supervise-relay:latest
+    image: ghcr.io/yal52810-lgtm/rustdesk-supervise-relay:latest
     container_name: rustdesk-relay
     restart: always
     command: hbbr -k ${ID_KEY:-_}

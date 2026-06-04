@@ -14,7 +14,7 @@ jobs:
   # Web (API + Vue 前端)
   # ============================================================
   build-web:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -35,6 +35,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Build and push Web image
         uses: docker/build-push-action@v6
         with:
@@ -42,7 +45,7 @@ jobs:
           file: ./Dockerfile.optimized
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}-web:latest
+            ${{ env.IMAGE_NAME }}-web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -50,7 +53,7 @@ jobs:
   # 构建 Rust 二进制 (hbbs + hbbr)
   # ============================================================
   build-rust:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
@@ -85,7 +88,7 @@ jobs:
   # ============================================================
   build-id:
     needs: build-rust
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -114,6 +117,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       - name: Build and push ID image
         uses: docker/build-push-action@v6
@@ -122,14 +128,14 @@ jobs:
           file: ./Dockerfile.id
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}-id:latest
+            ${{ env.IMAGE_NAME }}-id:latest
 
   # ============================================================
   # Relay 镜像 (hbbr)
   # ============================================================
   build-relay:
     needs: build-rust
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -159,6 +165,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Build and push Relay image
         uses: docker/build-push-action@v6
         with:
@@ -166,4 +175,4 @@ jobs:
           file: ./Dockerfile.relay
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}-relay:latest
+            ${{ env.IMAGE_NAME }}-relay:latest
